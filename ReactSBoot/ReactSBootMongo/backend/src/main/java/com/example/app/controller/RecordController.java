@@ -53,7 +53,9 @@ public class RecordController {
         }
         // Save the record to the database
         record.setId(null); // Ensure ID is null for new records
-        // This will allow MongoDB to generate a new ID
+
+        // Uncomment the line below to see the record being saved in the console
+        System.out.println("Saving record: " + record.getClass().getName());
          
         com.example.app.model.Record savedRecord = recordRepository.save(record);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedRecord);
