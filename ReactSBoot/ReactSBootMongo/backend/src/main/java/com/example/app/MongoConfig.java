@@ -22,6 +22,7 @@ public class MongoConfig {
         MappingMongoConverter converter = new MappingMongoConverter(dbRefResolver, context);
         converter.setCustomConversions(conversions);
         converter.setTypeMapper(new DefaultMongoTypeMapper(null)); // Remove _class
+         converter.afterPropertiesSet();// <-- Add this line for Spring Boot 3.x
         return converter;
     }
 }
