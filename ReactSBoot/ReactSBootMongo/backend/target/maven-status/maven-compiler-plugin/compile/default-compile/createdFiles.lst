@@ -1,9 +1,0 @@
-com\example\app\model\Record$Geolocation$Coordinates.class
-com\example\app\repository\RecordRepository.class
-com\example\app\Application.class
-com\example\app\controller\RecordController.class
-com\example\app\SecurityConfig.class
-com\example\app\model\Record$Geolocation.class
-com\example\app\MongoConfig.class
-com\example\app\model\Record.class
-com\example\app\controller\WelcomeController.class
