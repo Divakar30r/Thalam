@@ -12,36 +12,47 @@
     <description>Fullstack application with Spring Boot and React</description>
 
     <properties>
-        <java.version>11</java.version>
-        <spring.boot.version>2.5.4</spring.boot.version>
+        <java.version>17</java.version>
+      
         <mongodb.driver.version>4.3.1</mongodb.driver.version>
     </properties>
 
-    <dependencies>
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.5.0</version>
+    <relativePath/> <!-- lookup parent from repository -->
+</parent>
+
+<dependencies>
  <dependency>
     <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-web</artifactId>
-    <version>3.5.0</version> <!-- Latest version -->
+    <artifactId>spring-boot-starter-web</artifactId>    
+</dependency>
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-oauth2-client</artifactId>
+</dependency>
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
 
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter</artifactId>
-    <version>3.5.0</version> <!-- Latest version -->
-
 </dependency>
 
  
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-data-mongodb</artifactId>
-    <version>3.5.0</version> <!-- Latest version -->
 </dependency>
 
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-devtools</artifactId>
-    <version>3.5.0</version> <!-- Latest version -->
     <scope>runtime</scope>
     <optional>true</optional>
 </dependency>
@@ -56,10 +67,9 @@
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-test</artifactId>
-    <version>3.5.0</version> <!-- Latest version -->
     <scope>test</scope>
 </dependency>
-    </dependencies>
+</dependencies>
 
     <build>
         <plugins>
@@ -82,4 +92,5 @@
               </plugin>
         </plugins>
     </build>
+
 </project>
