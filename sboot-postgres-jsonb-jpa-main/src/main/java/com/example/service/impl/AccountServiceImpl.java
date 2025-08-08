@@ -19,8 +19,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.StringJoiner;
 
@@ -93,9 +95,11 @@ public class AccountServiceImpl implements AccountService {
             throw new ResourceNotFoundException(AccountConstants.ACCOUNT_NOT_FOUND.getMessage());
         }
         AccountEntity existingAccount = byAccNo.get();
+        
         existingAccount.setBranch(newBranch);
         existingAccount.setTransactions(accountTransactionService
                 .updateAccountSuccessfulEvent(this.accountDetailsDeserializer.deserializeAccount(existingAccount)));
+        
         existingAccount.setModifiedDate(new Date());
         existingAccount.setModifiedBy(this.serviceAccount);
         AccountEntity updatedAccount = this.accountRepository.save(existingAccount);
@@ -140,6 +144,7 @@ public class AccountServiceImpl implements AccountService {
         existingAccount.setModifiedBy(this.serviceAccount);
         existingAccount.setTransactions(accountTransactionService
                 .createTransactionSuccessfulEvent(this.accountDetailsDeserializer.deserializeAccount(existingAccount), deposit));
+        
         AccountEntity updatedAccount = this.accountRepository.save(existingAccount);
         updatedAccount.getTransactions().sort(Comparator.comparing(Transaction::getTs));
         return this.accountDetailsDeserializer.deserializeAccount(updatedAccount);
@@ -164,7 +169,6 @@ public class AccountServiceImpl implements AccountService {
         }
         AccountEntity existingAccount = byAccNo.get();
         Long withdraw = Long.parseLong(withdrawalAmount);
-
         Long existingBalance = ((existingAccount.getBalance() != null) ? existingAccount.getBalance() : 0L);
         if (withdraw > existingBalance) {
             throw new InsufficientAccountBalanceException(AccountConstants.INSUFFICIENT_ACCOUNT_BALANCE.getMessage());

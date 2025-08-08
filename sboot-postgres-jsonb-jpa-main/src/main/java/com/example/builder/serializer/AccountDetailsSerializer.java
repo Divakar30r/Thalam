@@ -2,13 +2,16 @@ package com.example.builder.serializer;
 
 import com.example.entity.AccountEntity;
 import com.example.model.Account;
+import com.example.model.Transaction;
 import com.example.service.AccountTransactionService;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class AccountDetailsSerializer {
@@ -22,6 +25,7 @@ public class AccountDetailsSerializer {
     }
 
     public AccountEntity serializeAccount(Account Wrkaccount) {
+        
         return AccountEntity.builder()
                 .accNo(Integer.valueOf(RandomStringUtils.randomNumeric(5, 5)))
                 .holderName(Wrkaccount.getAccountHolderName())
