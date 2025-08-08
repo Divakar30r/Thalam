@@ -79,7 +79,7 @@ public class ExceptionHandlerControllerAdvice {
     @ResponseStatus(value = HttpStatus.INTERNAL_SERVER_ERROR)
     public @ResponseBody ExceptionResponse handleException(final Exception exception,
                                                            final HttpServletRequest request) {
-
+        exception.printStackTrace();
         return ExceptionResponse.builder()
                 .errorMessage(exception.getMessage())
                 .requestedURI(request.getRequestURI())

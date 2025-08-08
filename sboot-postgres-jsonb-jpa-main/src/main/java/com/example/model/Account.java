@@ -17,7 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"timestamp", "accountNumber", "accountHolderName", "accountBalance", "accountStartDate",
+@JsonPropertyOrder({"timestamp", "accountNumber", "accountHolderName", "accountCurrentBalance", "accountStartDate",
         "accountBranch", "accountTransactions"})
 public class Account implements Serializable {
 
@@ -27,7 +27,7 @@ public class Account implements Serializable {
     private Date timestamp;
     private Integer accountNumber;
     private String accountHolderName;
-    private Long accountBalance;
+    private Long accountCurrentBalance;
     private Date accountStartDate;
     private String accountBranch;
     private List<Transaction> accountTransactions;

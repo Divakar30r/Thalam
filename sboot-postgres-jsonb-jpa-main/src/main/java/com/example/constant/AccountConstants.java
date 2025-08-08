@@ -13,8 +13,8 @@ public enum AccountConstants {
     ACCOUNT_NOT_FOUND("Account not found."),
     EVENT_CREATE_ACCOUNT("create_account"),
     EVENT_ACCOUNT_UPDATE("account_update"),
-    EVENT_DEPOSIT("deposit"),
-    EVENT_WITHDRAWAL("withdrawal"),
+    EVENT_DEPOSIT("deposit transaction"),
+    EVENT_WITHDRAWAL("withdrawal transaction"),
     COMMA(","),
     INSUFFICIENT_ACCOUNT_BALANCE("Withdrawal amount is greater than the available account balance.");
 

@@ -1,6 +1,6 @@
 package com.example.service.impl;
 
-import com.example.builder.AccountTransactionEventBuilder;
+import com.example.builder.serializer.AccountDetailsSerializer;
 import com.example.constant.AccountConstants;
 import com.example.deserializer.AccountDetailsDeserializer;
 import com.example.entity.AccountEntity;
@@ -10,8 +10,9 @@ import com.example.exception.ResourceNotFoundException;
 import com.example.model.Account;
 import com.example.model.Transaction;
 import com.example.repository.AccountRepository;
-import com.example.serializer.AccountDetailsSerializer;
 import com.example.service.AccountService;
+import com.example.service.AccountTransactionService;
+
 import io.micrometer.common.util.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,11 +34,16 @@ public class AccountServiceImpl implements AccountService {
     AccountDetailsDeserializer accountDetailsDeserializer;
 
     @Autowired
-    AccountDetailsSerializer accountDetailsSerializer;
+    AccountDetailsSerializer accountDetailsSerializer; 
 
+    AccountTransactionService accountTransactionService;
+    public AccountServiceImpl (AccountTransactionService accountTransactionService){
+        this.accountTransactionService = accountTransactionService;
+    }
+        
     @Value("${SERVICE_ACCOUNT}")
     private String serviceAccount;
-
+    
     @Override
     public Account getAccountInformation(String accountNumber) throws ResourceNotFoundException, BadRequestException {
         if (StringUtils.isBlank(accountNumber) || !NumberUtils.isDigits(accountNumber)) {
@@ -88,8 +94,8 @@ public class AccountServiceImpl implements AccountService {
         }
         AccountEntity existingAccount = byAccNo.get();
         existingAccount.setBranch(newBranch);
-        existingAccount.setTransactions(AccountTransactionEventBuilder
-                .updateAccountSuccessfulEvent(existingAccount.getTransactions()));
+        existingAccount.setTransactions(accountTransactionService
+                .updateAccountSuccessfulEvent(this.accountDetailsDeserializer.deserializeAccount(existingAccount)));
         existingAccount.setModifiedDate(new Date());
         existingAccount.setModifiedBy(this.serviceAccount);
         AccountEntity updatedAccount = this.accountRepository.save(existingAccount);
@@ -127,13 +133,13 @@ public class AccountServiceImpl implements AccountService {
             throw new ResourceNotFoundException(AccountConstants.ACCOUNT_NOT_FOUND.getMessage());
         }
         AccountEntity existingAccount = byAccNo.get();
-        int deposit = Integer.parseInt(depositAmount);
+        Long deposit = Long.parseLong(depositAmount);
         Long newBalance = ((existingAccount.getBalance() != null) ? existingAccount.getBalance() : 0L) + deposit;
         existingAccount.setBalance(newBalance);
         existingAccount.setModifiedDate(new Date());
         existingAccount.setModifiedBy(this.serviceAccount);
-        existingAccount.setTransactions(AccountTransactionEventBuilder
-                .createDepositSuccessfulEvent(existingAccount.getTransactions(), deposit));
+        existingAccount.setTransactions(accountTransactionService
+                .createTransactionSuccessfulEvent(this.accountDetailsDeserializer.deserializeAccount(existingAccount), deposit));
         AccountEntity updatedAccount = this.accountRepository.save(existingAccount);
         updatedAccount.getTransactions().sort(Comparator.comparing(Transaction::getTs));
         return this.accountDetailsDeserializer.deserializeAccount(updatedAccount);
@@ -157,10 +163,10 @@ public class AccountServiceImpl implements AccountService {
             throw new ResourceNotFoundException(AccountConstants.ACCOUNT_NOT_FOUND.getMessage());
         }
         AccountEntity existingAccount = byAccNo.get();
-        Integer withdraw = Integer.parseInt(withdrawalAmount);
+        Long withdraw = Long.parseLong(withdrawalAmount);
 
         Long existingBalance = ((existingAccount.getBalance() != null) ? existingAccount.getBalance() : 0L);
-        if (Long.valueOf(withdraw) > existingBalance) {
+        if (withdraw > existingBalance) {
             throw new InsufficientAccountBalanceException(AccountConstants.INSUFFICIENT_ACCOUNT_BALANCE.getMessage());
         }
 
@@ -168,8 +174,7 @@ public class AccountServiceImpl implements AccountService {
         existingAccount.setBalance(newBalance);
         existingAccount.setModifiedDate(new Date());
         existingAccount.setModifiedBy(this.serviceAccount);
-        existingAccount.setTransactions(AccountTransactionEventBuilder
-                .createWithdrawalSuccessfulEvent(existingAccount.getTransactions(), withdraw));
+        existingAccount.setTransactions(accountTransactionService.createTransactionSuccessfulEvent(this.accountDetailsDeserializer.deserializeAccount(existingAccount), Long.valueOf( -1 * withdraw)));
         AccountEntity updatedAccount = this.accountRepository.save(existingAccount);
         updatedAccount.getTransactions().sort(Comparator.comparing(Transaction::getTs));
         return this.accountDetailsDeserializer.deserializeAccount(updatedAccount);

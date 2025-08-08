@@ -13,7 +13,7 @@ public class AccountDetailsDeserializer {
                 .accountHolderName(accountEntity.getHolderName())
                 .accountStartDate(accountEntity.getStartDate())
                 .accountBranch(accountEntity.getBranch())
-                .accountBalance(accountEntity.getBalance())
+                .accountCurrentBalance(accountEntity.getBalance())
                 .accountTransactions(accountEntity.getTransactions())
                 .build();
     }

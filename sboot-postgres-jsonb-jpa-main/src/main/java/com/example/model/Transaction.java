@@ -20,4 +20,5 @@ public class Transaction {
     private Long transactionAmt;
     private Long balance;
     private String error;
+
 }
