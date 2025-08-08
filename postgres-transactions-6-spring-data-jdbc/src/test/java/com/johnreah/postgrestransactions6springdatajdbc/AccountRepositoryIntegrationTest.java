@@ -68,7 +68,7 @@ public class AccountRepositoryIntegrationTest extends AbstractIntegrationTest {
         Optional<Account> accountReloaded = accountRepository.findById(id);
         assertTrue(accountReloaded.isPresent() && accountReloaded.get().getAccountHistories().size() == 3, "All history records should have persisted");
     }
-
+    
     @Test
     public void createAndDeleteMultiple() {
         AccountType accountType = databaseUtils.createAndSaveRandomAccountType();

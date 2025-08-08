@@ -36,7 +36,7 @@ public class BankingServiceIntegrationTest extends AbstractIntegrationTest {
             });
         });
     }
-
+    
     @Test
     public void givenTransactionActive_whenMultipleOperations_andNoError_thenSavedOkWithNoRollback() {
         assertDoesNotThrow(() -> {
@@ -52,6 +52,7 @@ public class BankingServiceIntegrationTest extends AbstractIntegrationTest {
         assertTrue(bankingService.countAllCustomers() == 1, "Customer should have persisted");
         assertTrue(databaseUtils.countLinkCustomerAccounts() == 1, "Customer and account should be linked");
     }
+
 
     @Test
     public void givenTransactionActive_whenMultipleOperations_andError_thenExceptionAndRollback() {
@@ -94,5 +95,6 @@ public class BankingServiceIntegrationTest extends AbstractIntegrationTest {
         assertTrue(bankingService.countAllCustomers() == 1, "Customer should not have been rolled back");
         assertTrue(databaseUtils.countLinkCustomerAccounts() == 0, "Links never changed");
     }
+
 
 }

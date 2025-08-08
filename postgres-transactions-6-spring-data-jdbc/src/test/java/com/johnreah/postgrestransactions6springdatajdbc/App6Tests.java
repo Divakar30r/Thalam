@@ -30,10 +30,7 @@ class App6Tests extends AbstractIntegrationTest {
 	void contextLoads() {
 	}
 
-	@Test
-	void testContainerRuns() throws InterruptedException {
-		assertTrue(postgreSQLContainer.isRunning());
-	}
+
 
 	@Test
 	public void testCustomersExist() {

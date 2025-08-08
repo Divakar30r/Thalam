@@ -24,11 +24,13 @@ public class CommandLineRunnerImpl implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) {
-		bankingService.getAllCustomers().stream().forEach(c -> log.debug(String.format("Customer %d: %s", c.getId(), c.toString())));
+		System.out.println("Priting the statement Executing CommandLineRunnerImpl...");
+		bankingService.getAllCustomers().stream().forEach
+		(c -> log.debug(String.format("Customer %d: %s", c.getId(), c.toString())));
 		bankingService.getAllAccounts().stream().forEach(a -> log.debug(String.format("Account %d: %s", a.getId(), a.toString())));
 
 		Customer customer = bankingService.findCustomerByReference("TEST_CUSTOMER_01");
-		log.debug(String.format("Customer %d: %s", customer.getId(), customer.toString()));
+		//log.debug(String.format("Customer %d: %s", customer.getId(), customer.toString()));
 
 		Account newAccount = Account.builder()
 				.description("desc")

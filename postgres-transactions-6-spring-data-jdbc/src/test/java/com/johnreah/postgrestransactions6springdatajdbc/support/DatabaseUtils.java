@@ -53,7 +53,7 @@ public class DatabaseUtils {
         for (int i = 0; i < 3; i++) {
             account.getAccountHistories().add(AccountHistory.builder()
                     .description(UUID.randomUUID().toString())
-                    .timeStamp(OffsetDateTime.now())
+                    .Historytimestamp(OffsetDateTime.now())
                     .build());
         }
         return accountRepository.save(account);
