@@ -49,6 +49,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/authenticate").permitAll()
                         .requestMatchers("/api/app-user/register").permitAll()
+                        .requestMatchers("/api/document").permitAll()
                         .requestMatchers("/ws/**", "/ws").permitAll() // ✅ allow WebSocket
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/app-user/**").hasRole("USER")
@@ -80,7 +81,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173"));
+        config.setAllowedOrigins(List.of("http://localhost:5173","null"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
         config.setAllowCredentials(true);
         config.setAllowedHeaders(List.of("*"));

@@ -35,6 +35,8 @@ public class RabbitMQConfig {
         return new Jackson2JsonMessageConverter();
     }
 
+    //   ConnectionFactory, RabbitTemplate and RabbitAdmin - are configured as beans by default?
+
     @Bean
     public RabbitTemplate rabbitTemplate(ConnectionFactory connectionFactory) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);

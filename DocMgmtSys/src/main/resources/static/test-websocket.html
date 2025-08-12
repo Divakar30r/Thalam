@@ -1,0 +1,40 @@
+\Myliving\Git\Thalam\DocMgmtSys\src\main\resources\static\test-websocket.html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+    <script>
+        const socket = new SockJS('http://localhost:8080/ws');
+        const stompClient = Stomp.over(socket);
+
+         
+          
+              stompClient.connect({}, function (frame) {
+    console.log('Connected: ' + frame);
+
+
+            
+         stompClient.subscribe('/topic/documents/1', function (message) {
+      console.log('Received:', JSON.parse(message.body));
+         });              
+        const start = Date.now();
+        while (Date.now() - start < 10000) {}
+
+         // Send a test message
+            const documentDTO = {
+                id: 1,
+                title: "Test Document13",
+                content: "Updated content13"
+            };
+            stompClient.send("/app/documents/1", {}, JSON.stringify(documentDTO));
+
+
+        });
+        
+    </script>
+</body>
+</html>

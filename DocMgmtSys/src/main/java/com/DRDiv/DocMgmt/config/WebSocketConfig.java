@@ -16,6 +16,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 Logger log = LoggerFactory.getLogger(WebSocketConfig.class); 
 
     @Override
+    
     public void configureMessageBroker(MessageBrokerRegistry config) {
         log.info("Attempting to config broker");
         config.enableSimpleBroker("/topic");
@@ -24,9 +25,10 @@ Logger log = LoggerFactory.getLogger(WebSocketConfig.class);
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        log.info(("attempting to conifg endpoints "));
+        log.info(("attempting to config endpoints "));
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("http://localhost:15672") // ✅ use this instead
+                //.setAllowedOriginPatterns("http://localhost:5173")
+                .setAllowedOriginPatterns("*") // ✅ use this instead
                 .withSockJS();
     }
 }
