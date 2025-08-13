@@ -45,14 +45,19 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // Disable CSRF for testing purposes
                 //.cors(Customizer.withDefaults())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // commenting this to enable keycloak authentication
                 .addFilterBefore(jwtAuthorization, UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/authenticate").permitAll()
+                        .requestMatchers("/api/authenticateJWT").permitAll()
                         .requestMatchers("/api/app-user/register").permitAll()
                         .requestMatchers("/api/document").permitAll()
                         .requestMatchers("/ws/**", "/ws").permitAll() // ✅ allow WebSocket
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/app-user/**").hasRole("USER")
+                // Modifying  to enable keycloak authentication
+                       // .requestMatchers(HttpMethod.PUT, "/api/app-user/**").hasRole("USER")
+                        .requestMatchers(HttpMethod.PUT, "/api/app-user/**").permitAll()
+                        .requestMatchers(HttpMethod.PATCH, "/api/app-user/**").permitAll()
                         .anyRequest().authenticated()
                          
                 ).sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

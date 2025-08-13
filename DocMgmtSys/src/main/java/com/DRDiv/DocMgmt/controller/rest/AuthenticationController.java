@@ -1,6 +1,7 @@
 package com.DRDiv.DocMgmt.controller.rest;
 
 import com.DRDiv.DocMgmt.dto.LoginVM;
+import com.DRDiv.DocMgmt.security.JwtSigner;
 import com.DRDiv.DocMgmt.service.AppUserService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -24,4 +25,7 @@ public class AuthenticationController {
         String jwt = appUserService.authenticateAppUser(loginVM);
         return ResponseEntity.ok(jwt);
     }
+
+ 
+
 }
