@@ -57,19 +57,16 @@ public class ResponseController {
     }
     
     /*
-    @Operation(summary = "Update Response", description = "Update Response by userDto")
+    @Operation(summary = "Update ResponseTeam", description = "Update ResponseTeam users")
     @ApiResponse(responseCode = "200", description = "Response updated successfully")
     @ApiResponse(responseCode = "500", description = "Error updating Response")
     @PutMapping("/")
     public ResponseWrapper<ResponseTeamDto> updateResponse(final @RequestBody ResponseTeamDto responseTeamDto) {
-        return ResponseService.update(responseTeamDto)
-                .map(e -> new ResponseWrapper<>(e, "Response updated successfully"))
-                .onErrorResume(e -> {
-                    log.error("Error updating Response", e);
-                    return Mono.just(new ResponseWrapper<ResponseDto>(null, "Error updating Response"));
-                });
+        return ResponseService.addmember(responseTeamDto);
+                 
     }
-    
+     */
+    /*
     @Operation(summary = "Delete Response", description = "Delete Response by ResponseId")
     @ApiResponse(responseCode = "200", description = "Response deleted successfully")
     @ApiResponse(responseCode = "500", description = "Error deleting Response")

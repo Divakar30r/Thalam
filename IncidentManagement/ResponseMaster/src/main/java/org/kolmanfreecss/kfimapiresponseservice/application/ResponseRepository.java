@@ -17,5 +17,15 @@ public interface ResponseRepository {
     ResponseTeam update(final ResponseTeam responseTeam);
     
     void delete(final Long id);
+
+    Optional<ResponseTeam> findByMember(String member);
+
+    Optional<ResponseTeam> findByTeamName(String teamName);
+
+    Optional<ResponseTeam> findByINC(Long incidentId);
+
+    int detachIncidentById(String teamname, Long incidentId);
+
+    int updateIncidentDetails(String teamname, Long incidentId, String newStatus, String assignee);
 }
 

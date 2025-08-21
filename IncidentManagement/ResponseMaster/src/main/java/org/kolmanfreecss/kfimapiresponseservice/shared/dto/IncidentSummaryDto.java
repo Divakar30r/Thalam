@@ -2,6 +2,8 @@ package org.kolmanfreecss.kfimapiresponseservice.shared.dto;
 
  
  
+import java.sql.Timestamp;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -17,7 +19,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"incidentId", "title", "status", "assignee"})
+@JsonPropertyOrder({"incidentId", "eveenttype", "status", "assignee", "activitytimestamp"})
 public class IncidentSummaryDto  {
       
  
@@ -26,8 +28,8 @@ public class IncidentSummaryDto  {
     private Long incidentId;
 
     @JsonProperty
-    @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED, description = "Title of the incident")
-    private String title;    
+    @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED, description = "event of the activity")
+    private String eventtype;    
  
     @JsonProperty
     @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED, description = "Current status of the incident")
@@ -36,5 +38,9 @@ public class IncidentSummaryDto  {
     @JsonProperty
     @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED, description = "Current status of the incident")
     private String assignee;
-    
+
+    @JsonProperty
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Timestamp of the recent activity on the incident")
+    private String activitytimestampinUTCString;
+
 }

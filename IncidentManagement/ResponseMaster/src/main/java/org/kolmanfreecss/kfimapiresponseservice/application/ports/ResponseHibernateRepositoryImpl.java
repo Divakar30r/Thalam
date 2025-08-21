@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.configurationprocessor.json.JSONObject;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -30,26 +31,12 @@ public class ResponseHibernateRepositoryImpl  implements ResponseRepository {
     
     @Override
     public ResponseTeam create(final ResponseTeam responseTeam) {
-        // can you verify whether responseTeam.incidents is a JSONB field
-  final ObjectMapper objectMapper1 = new ObjectMapper();
-  try{
-     
-        System.out.println("Printed out:" + responseTeam.getIncidents().toString() + " Processed " +
-        objectMapper1.writeValueAsString((responseTeam.getIncidents())));
-    }catch (Exception e){
-         System.out.println("ExceptionIssue:" + responseTeam.getIncidents().toString());
-    e.printStackTrace();
-    }
-    
-
-
         return responseHibernateRepository.save(responseTeam);
     }
 
     @Override
     public List<ResponseTeam> getAll() {
-        System.out.println("Fetching all ResponseTeams"+ responseHibernateRepository.findAll().toArray().toString());
-        return responseHibernateRepository.findAll();
+       return responseHibernateRepository.findAll();
     }
 
     @Override
@@ -66,6 +53,24 @@ public class ResponseHibernateRepositoryImpl  implements ResponseRepository {
     public void delete(final Long id) {
           responseHibernateRepository.deleteById(id);
     }            
- 
 
+    public Optional<ResponseTeam> findByMember(final String member) {
+        return responseHibernateRepository.findByMember(member);
+    }
+
+    public Optional<ResponseTeam> findByTeamName(final String member) {
+        return responseHibernateRepository.findByTeamName(member);
+    }
+
+    public Optional<ResponseTeam> findByINC(final Long incidentId) {
+        return responseHibernateRepository.findByINC(incidentId);
+    }
+
+    public int detachIncidentById(final String teamName, final Long incidentId) {
+        return responseHibernateRepository.detachIncidentById(teamName, incidentId);
+    }
+
+    public int updateIncidentDetails(final String teamName, final Long incidentId, final String newStatus, final String assignee) {
+        return responseHibernateRepository.updateIncidentDetails(teamName, incidentId, newStatus, assignee);
+    }
 }

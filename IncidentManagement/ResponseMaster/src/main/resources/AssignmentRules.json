@@ -1,0 +1,14 @@
+{
+  "ASSIGN": {
+    "prvSts": ["OPEN","ONHOLD", "INPROGRESS", "", "REOPENED"],
+    "Mandatory": ["Assignee", "Team", "incidentId"]
+  },
+  "TRANSFER": {
+    "prvSts": ["ONHOLD", "INPROGRESS", "ASSIGNED", "REOPENED"],
+    "Mandatory": ["Assignee", "Team", "incidentId"]
+  },
+  "HOLD": {
+    "prvSts": ["INPROGRESS", "ASSIGNED", "", "REOPENED"],
+    "Mandatory": ["incidentId"]
+  }
+}

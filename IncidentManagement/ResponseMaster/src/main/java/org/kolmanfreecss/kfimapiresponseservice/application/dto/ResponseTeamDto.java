@@ -33,6 +33,7 @@ public record ResponseTeamDto(@Schema(hidden = true)    Long id,
 
  */
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -52,9 +53,8 @@ import org.kolmanfreecss.kfimapiresponseservice.shared.dto.IncidentSummaryDto;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonPropertyOrder({"timestamp", "accountNumber", "accountHolderName", "accountCurrentBalance", "accountStartDate",
-        "accountBranch", "accountTransactions"})
+@JsonInclude(JsonInclude.Include.NON_NULL) 
+@JsonPropertyOrder({"teamName", "members", "incidents"})
 public class ResponseTeamDto implements Serializable {
 
     @Serial
@@ -69,5 +69,6 @@ public class ResponseTeamDto implements Serializable {
 
     @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED, description = "List of incidents")
     private List<IncidentSummaryDto> incidents;
- 
+
+     
 }                            
