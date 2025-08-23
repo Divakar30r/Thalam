@@ -1,8 +1,6 @@
 package org.kolmanfreecss.kfimapiresponseservice.shared.dto;
 
  
- 
-import java.sql.Timestamp;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;

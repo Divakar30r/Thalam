@@ -26,6 +26,6 @@ public interface ResponseRepository {
 
     int detachIncidentById(String teamname, Long incidentId);
 
-    int updateIncidentDetails(String teamname, Long incidentId, String newStatus, String assignee);
-}
+    int updateIncidentDetailsEvent(String teamname, Long incidentId, String newStatus, String assignee, String activitytimestamp);
+} 
 

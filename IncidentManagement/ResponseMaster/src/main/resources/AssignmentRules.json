@@ -4,7 +4,7 @@
     "Mandatory": ["Assignee", "Team", "incidentId"]
   },
   "TRANSFER": {
-    "prvSts": ["ONHOLD", "INPROGRESS", "ASSIGNED", "REOPENED"],
+    "prvSts": ["ONHOLD", "INPROGRESS", "ASSIGNED", "REOPENED", "OPEN"],
     "Mandatory": ["Assignee", "Team", "incidentId"]
   },
   "HOLD": {

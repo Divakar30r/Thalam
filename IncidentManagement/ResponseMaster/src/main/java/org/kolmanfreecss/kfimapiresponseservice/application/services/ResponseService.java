@@ -1,6 +1,6 @@
 package org.kolmanfreecss.kfimapiresponseservice.application.services;
 
- 
+import org.kolmanfreecss.kfimapiresponseservice.shared.exceptions.*; 
 import org.kolmanfreecss.kfimapiresponseservice.application.ResponseRepository;
 import org.kolmanfreecss.kfimapiresponseservice.application.dto.ResponseTeamDto;
 import org.kolmanfreecss.kfimapiresponseservice.application.mappers.ResponseConverter;
@@ -15,6 +15,9 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.micrometer.observation.annotation.Observed;
 import reactor.core.publisher.Mono;
@@ -38,14 +41,16 @@ public class ResponseService {
     //private final ResponseEventHandlerPort ResponseEventHandlerPort;
     
     private final ResponseConverter responseConverter;
+    private final ResponseIncidentService responseIncidentService;
     
-     
+    
     public ResponseService(@Lazy @Qualifier("responseHibernateRepositoryImplBean") final ResponseRepository responseRepository,
                            //final ResponseEventHandlerPort ResponseEventHandlerPort,
-                           final ResponseConverter responseConverter) {
+                           final ResponseConverter responseConverter, final ResponseIncidentService responseIncidentService) {
         this.responseRepository = responseRepository;
         //this.ResponseEventHandlerPort = ResponseEventHandlerPort;
         this.responseConverter = responseConverter;
+        this.responseIncidentService = responseIncidentService;
     }
     
     public ResponseTeamDto createTeam(final ResponseTeamDto responseTeamDto) {
@@ -62,7 +67,6 @@ public class ResponseService {
                 
     }
 
- 
     public ResponseTeamDto attachMembers(final ResponseTeamDto responseTeamDto) {
         ResponseTeamDto Ref_ResponseTeamDto = this.responseConverter.toDto(this.responseRepository.findByTeamName(responseTeamDto.getTeamName()).get());
         List<String> w_members = Ref_ResponseTeamDto.getMembers();
@@ -75,10 +79,11 @@ public class ResponseService {
         return this.responseConverter.toDto(this.responseRepository.update(this.responseConverter.toEntity(Ref_ResponseTeamDto)));
     }
 
-    public ResponseTeamDto detachMembers(final ResponseTeamDto responseTeamDto) {
-        /*
-        if (this.responseRepository.findByTeamName(responseTeamDto.getTeamName()).isEmpty()) throw new TeamNotFoundException("Team not found: " + responseTeamDto.getTeamName());
-        */
+    public ResponseTeamDto detachMembers(final ResponseTeamDto responseTeamDto) throws TeamNotFoundException {
+        
+        if (this.responseRepository.findByTeamName(responseTeamDto.getTeamName()).isEmpty())
+             throw new TeamNotFoundException("Team not found: " + responseTeamDto.getTeamName(), responseTeamDto);
+        
 
         ResponseTeamDto Ref_ResponseTeamDto = this.responseConverter.toDto(this.responseRepository.findByTeamName(responseTeamDto.getTeamName()).get());
         List<String> w_members = Ref_ResponseTeamDto.getMembers();
@@ -103,16 +108,44 @@ public class ResponseService {
         });
     }
 
+    public String handleIncident(ResponseTeamDto responseTeamDto) throws InvalidInputException, UpdFailureException, Exception {
+        System.out.println("Inside handleIncident with event type: " + responseTeamDto.getIncidents().getFirst().getEventtype());
+        if (responseTeamDto.getIncidents().getFirst().getEventtype().toUpperCase().equals("ASSIGN")){
+            System.out.println("Reached ASSIGN condition");
+            return responseIncidentService.assignIncident(responseTeamDto);
+        }
+        else{
+            System.out.println("Reached NON ASSIGN condition");
+            return responseIncidentService.updateIncident(responseTeamDto);
+        }
+         
+    
+    
+    }
+
+
     @Transactional(propagation = Propagation.SUPPORTS)
     // This method is used to run transactional code receiving Runnable object and just execute it  accept any type out of output as return
-    public <T> T RunTransactional(java.util.function.Function<String, T> runnable) throws Exception {
+    public <T> T RunTransactional(java.util.function.Function<String, T> runnable) throws InvalidInputException, UpdFailureException, Exception {
         return runnable.apply("RunTransactional");
     }
 
     @Transactional
-    public <T> T RunTransactional(Callable<T> task) throws Exception {
+    public <T> T RunTransactional(Callable<T> task) throws InvalidInputException, UpdFailureException, Exception {
         return task.call();
     }
+    
+    public String getResponseTeamDtoasString(ResponseTeamDto responseTeamDto){
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.writeValueAsString(responseTeamDto);
+        }
+         catch (JsonProcessingException e) {
+        // Optionally log or handle the error
+          return "Invalid JSON format";
+        }
+         
+    } 
 /*
     public <T> RunTransactional(Runnable runnable) throws Exception {
         runnable.run();

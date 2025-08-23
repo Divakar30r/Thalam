@@ -12,6 +12,7 @@ import org.kolmanfreecss.kfimapiresponseservice.application.mappers.ResponseConv
 import org.kolmanfreecss.kfimapiresponseservice.application.services.ResponseService;
 import org.kolmanfreecss.kfimapiresponseservice.infrastructure.rest.model.ResponseWrapper;
 import org.kolmanfreecss.kfimapiresponseservice.shared.dto.IncidentSummaryDto;
+import org.kolmanfreecss.kfimapiresponseservice.shared.exceptions.*;
 import org.springframework.web.bind.annotation.*;
 //import reactor.core.publisher.Mono;
 
@@ -52,10 +53,20 @@ public class ResponseController {
     @GetMapping("/{id}")
     public ResponseWrapper<ResponseTeamDto>  getResponseById(final @PathVariable Long id) {
         if (responseService.getItemById(id)!= null)
-        return new ResponseWrapper(responseService.getItemById(id),"Fetch by ID");
-        else return new ResponseWrapper((ResponseTeamDto) null, "No data found");
+        return new ResponseWrapper<>(responseService.getItemById(id),"Fetch by ID");
+        else return new ResponseWrapper<>((ResponseTeamDto) null, "No data found");
     }
-    
+
+    @Operation(summary = "Incident updates", description = "Incident updates")
+    @ApiResponse(responseCode = "200", description = "Incident updated successfully")
+    @ApiResponse(responseCode = "500", description = "Error handling Incident")
+    @PutMapping("/")
+    public ResponseWrapper<String>  incidentAPI(final @RequestBody ResponseTeamDto responseTeamDto) throws InvalidInputException, UpdFailureException, Exception {
+         
+        return new ResponseWrapper<String>(responseService.handleIncident(responseTeamDto));
+         
+    }
+
     /*
     @Operation(summary = "Update ResponseTeam", description = "Update ResponseTeam users")
     @ApiResponse(responseCode = "200", description = "Response updated successfully")

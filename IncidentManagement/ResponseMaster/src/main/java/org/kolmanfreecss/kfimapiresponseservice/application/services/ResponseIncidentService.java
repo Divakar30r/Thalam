@@ -2,15 +2,24 @@ package org.kolmanfreecss.kfimapiresponseservice.application.services;
 
 import org.kolmanfreecss.kfimapiresponseservice.application.dto.ResponseTeamDto;
 
+import java.sql.SQLException;
 import java.sql.SQLOutput;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.kolmanfreecss.kfimapiresponseservice.application.ResponseRepository;
 import org.kolmanfreecss.kfimapiresponseservice.application.mappers.ResponseConverter;
+import org.kolmanfreecss.kfimapiresponseservice.shared.exceptions.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+
+@Service
 public class ResponseIncidentService {
 //Design
 /*
@@ -34,69 +43,90 @@ public class ResponseIncidentService {
  
     Logger log = LoggerFactory.getLogger(ResponseIncidentService.class);
     
-    private final ResponseService responseServiceTransactional;
+    @Autowired
+    @Lazy
+    private  ResponseService responseServiceTransactional;
+
     private final ResponseRepository responseRepository;
     private final ResponseConverter responseConverter;
     List<RuleStructure> rules;
     // constructor loading the above three values
-    public ResponseIncidentService(ResponseService responseServiceTransactional,
-                                ResponseRepository responseRepository,
+    public ResponseIncidentService(ResponseRepository responseRepository,
                                 ResponseConverter responseConverter) {
-        this.responseServiceTransactional = responseServiceTransactional;
+        //this.responseServiceTransactional = responseServiceTransactional;
         this.responseRepository = responseRepository;
         this.responseConverter = responseConverter;
         rules = RuleValidator.loadRules("/AssignmentRules.json");
-        // Now you can use rules.stream().filter(r -> r.event().equals("ASSIGN")).findFirst()...
-
+   }
+/*
+   @PostConstruct
+   public void setResponseServiceObj(ResponseService responseServiceTransactional) {
+       this.responseServiceTransactional = responseServiceTransactional;
     }
-
-    public String ValidateInput(ResponseTeamDto responseTeamDto) {
-
-        ResponseTeamDto TeamRef_ResponseTeamDto = this.responseConverter.toDto(this.responseRepository.findByTeamName(responseTeamDto.getTeamName()).get());
-
+*/
+    public void ValidateInput(ResponseTeamDto responseTeamDto) throws InvalidInputException {
+        System.out.println("Reached validateInput");
+        
+          
         String inputEvent =responseTeamDto.getIncidents().getFirst().getEventtype().toUpperCase();
-        rules.stream()
+        Optional<RuleStructure> ruleOpt  =      rules.stream()
             .filter(r -> r.event().equals(inputEvent))
-            .findFirst()
-            .ifPresent(rule -> {
-                if (rule.isValidStatus(TeamRef_ResponseTeamDto.getIncidents().getFirst().getStatus())) {
-                    log.info("Current status is valid for the event: " + inputEvent);
+            .findFirst();
+        if (ruleOpt.isPresent())
+        
+            {
+                if (ruleOpt.get().isMandatory("member")  && (responseTeamDto.getMembers().size() != 1)) {
+                   throw new InvalidInputException("Either no member or multiple members - not allowed ", responseTeamDto);
+                }
+                if (ruleOpt.get().isMandatory("incidentId")&&(responseTeamDto.getIncidents().size() != 1)) {
+                   throw new InvalidInputException("Either no incident or multiple incidents - not allowed", responseTeamDto);
+                }
+
+                ResponseTeamDto TeamRef_ResponseTeamDto = this.responseConverter.toDto(this.responseRepository.findByTeamName(responseTeamDto.getTeamName()).get());
+                TeamRef_ResponseTeamDto.setIncidents(null);
+                ResponseTeamDto ref_INC_TeamDto = this.responseConverter.toDto(this.responseRepository.findByINC(responseTeamDto.getIncidents().getFirst().getIncidentId()).get());
+
+                if (ruleOpt.get().isValidStatus(ref_INC_TeamDto.getIncidents().getFirst().getStatus())) {
+                    log.info("Current status is valid for the event: " + inputEvent + " Current status: " + ref_INC_TeamDto.getIncidents().getFirst().getStatus() + " Incident#: " + ref_INC_TeamDto.getIncidents().getFirst().getIncidentId()  );
                 } else {
-                    log.error("Current status is not valid for the event: " + inputEvent);
-                 //   throw new InvalidInputException("Current status is not valid for the event: " + inputEvent);
+                    log.error("Current status is not valid for the event: " + inputEvent+ " Current status: " + ref_INC_TeamDto.getIncidents().getFirst().getStatus()+ " Incident#: " + ref_INC_TeamDto.getIncidents().getFirst().getIncidentId()  );
+                    throw new InvalidInputException("Current status is not valid for the event: " + inputEvent, responseTeamDto);
                 }
 
-                if (rule.isMandatory("member")  && (responseTeamDto.getMembers().size() != 1)) {
-                    //throw new InvalidInputException("Either no member or multiple members - not allowed ");
-                }
-                if (rule.isMandatory("incidentId")&&(responseTeamDto.getIncidents().size() != 1)) {
-                    //throw new InvalidInputException("Either no incident or multiple incidents - not allowed");
-                }
-                if (rule.isMandatory("Team") && this.responseRepository.findByMember(responseTeamDto.getMembers().getFirst()).isEmpty()) {
-                    //throw new InvalidInputExcpetion("Member not found");
-                }
 
+                if (ruleOpt.get().isMandatory("Team") && this.responseRepository.findByMember(responseTeamDto.getMembers().getFirst()).isEmpty()) {
+                    throw new InvalidInputException("Member not found", responseTeamDto);
+                }
                 if ((this.responseRepository.findByMember(responseTeamDto.getMembers().getFirst()).get().getTeamname()!= TeamRef_ResponseTeamDto.getTeamName())
                          || (!responseTeamDto.getMembers().contains(responseTeamDto.getMembers().getFirst()))) {
-                      //       throw new InvalidInputExcpetion("Member& Team mismatch");} 
-    
-                    }
+                    throw new InvalidInputException("Member & Team mismatch", responseTeamDto);
+                } 
+            }
+            else{
+                throw new InvalidInputException("Event type not recognized", responseTeamDto);
+            }
 
-            });
+
              
-            return "Sucess";
-            
     }
 
-    public String assignIncident(ResponseTeamDto responseTeamDto) throws Exception  {
-
+    public String assignIncident(ResponseTeamDto responseTeamDto) throws InvalidInputException, UpdFailureException,Exception  {
+        System.out.println("Reached assignIncident");
         return (String) responseServiceTransactional.RunTransactional(() -> {    
+
+            ValidateInput(responseTeamDto);
+            System.out.println("Validated Input from assignIncident");
             
             if (this.responseRepository.findByINC(responseTeamDto.getIncidents().getFirst().getIncidentId()).isPresent()) {  // Incident exists
 
                 ResponseTeamDto Existing_ResponseTeamDto = this.responseConverter.toDto(this.responseRepository.findByINC(responseTeamDto.getIncidents().getFirst().getIncidentId()).get());
                 if (Existing_ResponseTeamDto.getTeamName().equals(responseTeamDto.getTeamName())) {                         // Reassignment in the same team
                     log.info("Incident already assigned to the team: " + responseTeamDto.getTeamName());
+                     responseTeamDto.getIncidents().getFirst().setEventtype("TRANSFER");
+                     updateIncident(responseTeamDto);
+                     
+                     return "Incident reassigned to the same team: " + responseTeamDto.getTeamName();       
+
                 /* 
                     //search for the incident in the list
                     Existing_ResponseTeamDto.getIncidents().stream()
@@ -112,7 +142,6 @@ public class ResponseIncidentService {
                     this.responseRepository.update(this.responseConverter.toEntity(Existing_ResponseTeamDto));
                     */
                     
-                    return "Incident reassigned to the same team: " + responseTeamDto.getTeamName();       
                 
                 }
                 else{
@@ -128,7 +157,7 @@ public class ResponseIncidentService {
                   
                 New_ResponseTeamDto.getIncidents().add(responseTeamDto.getIncidents().getFirst());
                 this.responseRepository.update(this.responseConverter.toEntity(New_ResponseTeamDto));
-                return null;
+                return "new Incident assigned to the team: " + responseTeamDto.getTeamName();
                  
             
 
@@ -138,26 +167,43 @@ public class ResponseIncidentService {
     }
     
     public String updateIncident(ResponseTeamDto responseTeamDto) throws Exception {
-        
-
+       System.out.println("Reached UpdateIncident"); 
+       ValidateInput(responseTeamDto); //TODO: need to do this if invoked directly from ResponseService 
+       System.out.println("Validated Input");
+       // print the responseTeamDto eventtype
+         System.out.println("Event type: " + responseTeamDto.getIncidents().getFirst().getEventtype());
        return (String) responseServiceTransactional.RunTransactional(() -> {
         
-        final int SQLoutput;
+         int SQLoutput=0;
             switch (responseTeamDto.getIncidents().getFirst().getEventtype().toUpperCase()) {
 
+                case "TRANSFER" -> {
+                    SQLoutput =  this.responseRepository.updateIncidentDetailsEvent(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "ASSIGNED", responseTeamDto.getIncidents().getFirst().getAssignee(), Instant.now().toString());}
                 case "STARTED" -> {
-                    SQLoutput =  this.responseRepository.updateIncidentDetails(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "INPROGRESS", null);}
+                    SQLoutput =  this.responseRepository.updateIncidentDetailsEvent(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "INPROGRESS", null, Instant.now().toString());}
                 case "HOLD" -> {
-                    SQLoutput = this.responseRepository.updateIncidentDetails(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "ONHOLD", " ");}
+                    SQLoutput = this.responseRepository.updateIncidentDetailsEvent(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "ONHOLD", " ", Instant.now().toString());}
                 case "CLOSE" -> {
-                    SQLoutput = this.responseRepository.updateIncidentDetails(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "CLOSED", null);}
+                    SQLoutput = this.responseRepository.updateIncidentDetailsEvent(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "CLOSED", null, Instant.now().toString());}
                 case "RESOLVE" -> {
-                    SQLoutput = this.responseRepository.updateIncidentDetails(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "RESOLVED", null);}                    
+                    SQLoutput = this.responseRepository.updateIncidentDetailsEvent(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "RESOLVED", null, Instant.now().toString());}                    
                 case "REOPEN"-> {
-                    SQLoutput = this.responseRepository.updateIncidentDetails(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "REOPENED", null);}
-                default -> {}
+                    SQLoutput = this.responseRepository.updateIncidentDetailsEvent(responseTeamDto.getTeamName(), responseTeamDto.getIncidents().getFirst().getIncidentId(), "REOPENED", null, Instant.now().toString());}
+                default -> {
+                    log.error("Event type not recognized: " + responseTeamDto.getIncidents().getFirst().getEventtype());
+
+                }
             }
-            return "";
+
+            if (SQLoutput < 0) 
+            {
+
+                log.error("Failed to update incident in team: " + responseTeamDto.getTeamName());
+                throw new UpdFailureException("Failed to update incident ", responseTeamDto);
+            
+            }
+            
+            return "SQL Output" + String.valueOf(SQLoutput);
         });
 
         

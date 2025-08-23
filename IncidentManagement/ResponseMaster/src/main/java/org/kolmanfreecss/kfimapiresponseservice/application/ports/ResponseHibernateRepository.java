@@ -1,5 +1,6 @@
 package org.kolmanfreecss.kfimapiresponseservice.application.ports;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.kolmanfreecss.kfimapiresponseservice.application.entity.ResponseTeam;
@@ -20,12 +21,12 @@ public interface ResponseHibernateRepository extends JpaRepository<ResponseTeam,
     public Optional<ResponseTeam> findByMember(String member);
 
     @Transactional(readOnly = true)
+    @Query(value = "SELECT * FROM responseteam WHERE ?1 = teamname",  nativeQuery = true)
     public Optional<ResponseTeam> findByTeamName(String teamName);
 
     @Transactional(readOnly = true)
-//    @Query(value = "SELECT * FROM responseteam WHERE incidents @> ?1", nativeQuery = true)
     @Query(value = "SELECT * FROM responseteam WHERE incidents @> jsonb_build_array(jsonb_build_object('incidentId', CAST(?1 AS bigint)))",
-                nativeQuery = true)
+               nativeQuery = true)
     public Optional<ResponseTeam> findByINC(Long incidentId);
 
      
@@ -77,6 +78,10 @@ public interface ResponseHibernateRepository extends JpaRepository<ResponseTeam,
                         CASE WHEN :assignee IS NOT NULL THEN jsonb_build_object('assignee', :assignee) END,
                         '{}'::jsonb
                     )
+                    || COALESCE(
+                        CASE WHEN :activitytimestamp IS NOT NULL THEN jsonb_build_object('activitytimestampinUTCString', :activitytimestamp) END,
+                        '{}'::jsonb
+                    )
                 ELSE incident
             END
         )
@@ -86,6 +91,6 @@ public interface ResponseHibernateRepository extends JpaRepository<ResponseTeam,
       AND incidents @> jsonb_build_array(jsonb_build_object('incidentId', :incidentId))
     """, nativeQuery = true)
 
-    public int updateIncidentDetails(String teamname, Long incidentId, String newStatus, String assignee);        
+    public int updateIncidentDetails(String teamname, Long incidentId, String newStatus, String assignee, String activitytimestamp);        
 }
 

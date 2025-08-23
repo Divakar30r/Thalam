@@ -14,8 +14,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
  
+ 
 @Data
 @Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -96,7 +99,7 @@ public class ResponseTeam{
     }
 
     public ResponseTeam(String teamName2, List<String> members2, List<IncidentSummaryDto> incidents2) {
-        //TODO Auto-generated constructor stub
+         
         this.teamname = teamName2;
         this.members = members2 != null ? members2 : new ArrayList<>();
         this.incidents = incidents2 != null ? incidents2 : new ArrayList<>();
