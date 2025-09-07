@@ -13,6 +13,7 @@ import com.mongodb.client.*;
 import com.mongodb.client.model.Updates;
 import org.bson.Document;
 import java.util.*;
+import code.PolMaster.*;
 
 
 
@@ -22,7 +23,9 @@ public class Main {
 
         
         //code.PolMasterCreation.PolMasterCreation.insertNullPolMaster();
-        code.PolMasterCreation.PolMasterMocker.UpdatePolTest();
+        //code.PolMasterCreation.PolMasterMocker.UpdatePolTest();
+        
+        PolMasterFieldThreads.getLinkedfields();
         //PolDBtables.UpdatePolTest();
      //ConfigurableApplicationContext context = SpringApplication.run(Main.class, args);
 

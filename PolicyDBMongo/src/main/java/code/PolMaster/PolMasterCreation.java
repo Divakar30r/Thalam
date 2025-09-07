@@ -1,14 +1,13 @@
-package code.PolMasterCreation;
+package code.PolMaster;
 
 
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
-import com.mongodb.client.FindIterable;
+ 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.google.gson.Gson;
-public class PolMasterCreation {
+ public class PolMasterCreation {
 
 
 

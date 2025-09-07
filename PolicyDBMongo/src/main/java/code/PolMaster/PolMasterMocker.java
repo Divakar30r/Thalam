@@ -213,7 +213,7 @@ public class PolMasterMocker {
 
         // Read PolRef rules for PolStakes
         MongoCollection<Document> polRef = db.getCollection("PolRef");
-        List<Document> rules = polRef.find(new Document("PolicyTable", "PolMTest")).into(new ArrayList<>());
+        List<Document> rules = polRef.find(new Document("PolicyTable", "PolMaster")).into(new ArrayList<>());
 
 
         // Update PolStakes documents
@@ -223,7 +223,7 @@ public class PolMasterMocker {
          // convert the output of convertPolicyConfig to LinkedHashMap
         try{
              finalConfigs
-          = convertAndRearrange((new ObjectMapper()).writeValueAsString(convertPolicyConfig("PolMTest")));
+          = convertAndRearrange((new ObjectMapper()).writeValueAsString(convertPolicyConfig("PolMaster")));
         }catch(Exception jpe){jpe.printStackTrace(); return;}
          
         
@@ -618,7 +618,7 @@ private static <T> T getRandomIntersectedValueForFieldKey(
                                         current = direction > 0 ? current.plus(period) : current.minus(period);
                                         dateList.add(current);
                                         possibleValues.add((T) current.toString());
-                                         System.out.println("Adding Date: " + current.toString());
+                                          
                                         if (i >= 50) break; // safety break to avoid infinite loops
                                     }
                                         }
