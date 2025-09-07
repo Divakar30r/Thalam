@@ -1,0 +1,492 @@
+package code;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+
+import org.bson.Document;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.google.gson.Gson;
+
+public class PolDBtables {
+
+    public static void UpdatePolMaster() {
+        // Implementation for updating PolMaster documents
+        MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
+        MongoDatabase db = mongoClient.getDatabase("PolDB");
+
+        // Read PolRef rules for PolMaster
+        MongoCollection<Document> polRef = db.getCollection("PolRef");
+        List<Document> rules = polRef.find(new Document("PolicyTable", "PolMaster")).into(new ArrayList<>());
+
+        // Prepare field-to-allowed-values map
+        Map<String, List<String>> fieldAllowedValues = new HashMap<>();
+        for (Document rule : rules) {
+            Document desc = rule.get("Description", Document.class);
+            if (desc != null && "List<String>".equals(desc.getString("Type"))) {
+                List<String> allowed = desc.getList("AllowedValues", String.class);
+                if (allowed != null && !allowed.isEmpty()) {
+                    fieldAllowedValues.put(rule.getString("PolicyField"), allowed);
+                }
+            }
+        }
+
+        // Update PolMaster documents
+        MongoCollection<Document> polMaster = db.getCollection("PolMaster");
+        FindIterable<Document> docs = polMaster.find();
+        Random rand = new Random();
+
+        for (Document doc : docs) {
+            Document updateFields = new Document();
+            for (Map.Entry<String, List<String>> entry : fieldAllowedValues.entrySet()) {
+                String field = entry.getKey();
+                List<String> allowed = entry.getValue();
+                String randomValue = allowed.get(rand.nextInt(allowed.size()));
+                
+                updateFields.append(field, randomValue);
+                // Currently vaue of  key 'PolicyType' is set as 'TBD' and value of key 'PolicyNumber' also has the prefix 'TBD'  when the entry.getKey() ="PolicyType", can you also replace the literal 'TBD' in the policynumber with PolicyType
+                //  when the entry.getKey() ="PolicyType", do add this policytype random value as prefix to the value of entry.getKey() ="PolicyNumber"
+
+                // need to get existing value of field in the Document doc
+                if ("PolicyType".equals(field)) {
+                    String existingValue = doc.getString("PolicyNumber");
+                    System.out.println("Existing PolicyType: " + existingValue);
+                    updateFields.append("PolicyNumber", randomValue+existingValue);
+                }
+                
+                 
+
+            }
+            if (!updateFields.isEmpty()) {
+                polMaster.updateOne(
+                    new Document("_id", doc.getObjectId("_id")),
+                    new Document("$set", updateFields)
+                );
+            }
+        }
+
+        mongoClient.close();
+        System.out.println("PolMaster documents updated based on PolRef rules.");
+
+ 
+    }
+
+
+    public static void UpdatePolStakes() {
+        // Implementation for updating PolMaster documents
+        MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
+        MongoDatabase db = mongoClient.getDatabase("PolDB");
+
+        // Read PolRef rules for PolStakes
+        MongoCollection<Document> polRef = db.getCollection("PolRef");
+        List<Document> rules = polRef.find(new Document("PolicyTable", "PolStakes")).into(new ArrayList<>());
+
+        // Prepare field-to-allowed-values map
+        Map<String, List<String>> fieldAllowedValues = new HashMap<>();
+        for (Document rule : rules) {
+            Document desc = rule.get("Description", Document.class);
+            if (desc != null && "List<String>".equals(desc.getString("Type"))) {
+                List<String> allowed = desc.getList("AllowedValues", String.class);
+                if (allowed != null && !allowed.isEmpty()) {
+                    fieldAllowedValues.put(rule.getString("PolicyField"), allowed);
+                }
+            }
+        }
+
+        // Update PolMaster documents
+        MongoCollection<Document> polMaster = db.getCollection("PolMaster");
+        FindIterable<Document> docs = polMaster.find();
+        Random rand = new Random();
+
+        for (Document doc : docs) {
+            Document updateFields = new Document();
+            for (Map.Entry<String, List<String>> entry : fieldAllowedValues.entrySet()) {
+                String field = entry.getKey();
+                List<String> allowed = entry.getValue();
+                String randomValue = allowed.get(rand.nextInt(allowed.size()));
+
+                // Support nested field references like "StakerCodes.Unique"
+                if (field.contains(".")) {
+                    String[] parts = field.split("\\.");
+                    Document current = updateFields;
+                    for (int i = 0; i < parts.length - 1; i++) {
+                        if (!current.containsKey(parts[i]) || !(current.get(parts[i]) instanceof Document)) {
+                            current.put(parts[i], new Document());
+                        }
+                        current = (Document) current.get(parts[i]);
+                    }
+                    current.put(parts[parts.length - 1], randomValue);
+                } else {
+                    updateFields.append(field, randomValue);
+                }
+
+                // PolicyType logic (unchanged)
+                if ("PolicyType".equals(field)) {
+                    String existingValue = doc.getString("PolicyNumber");
+                    System.out.println("Existing PolicyType: " + existingValue);
+                    updateFields.append("PolicyNumber", randomValue + existingValue);
+                }
+            }
+            if (!updateFields.isEmpty()) {
+                polMaster.updateOne(
+                    new Document("_id", doc.getObjectId("_id")),
+                    new Document("$set", updateFields)
+                );
+            }
+        }
+
+        mongoClient.close();
+        System.out.println("PolMaster documents updated based on PolRef rules.");
+    }
+
+    public static   List<Document> convertPolicyConfig() {
+
+        MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
+        MongoDatabase db = mongoClient.getDatabase("PolDB");
+
+        // Read PolRef rules for PolMaster
+        MongoCollection<Document> polRef = db.getCollection("PolRef");
+        List<Document> mongoDocList = polRef.find(new Document("PolicyTable", "PolTest")).into(new ArrayList<>());
+
+        // put MongoDocList in an iteration
+        List<Document> outputAllfieldRuleList = new ArrayList<>();
+        for (Document mongoDoc : mongoDocList) {
+             
+
+            String policyField = mongoDoc.getString("PolicyField");
+            Document description = mongoDoc.get("Description", Document.class);
+            List<Document> allowedValues = description.getList("AllowedValues", Document.class);
+        
+
+            List<Document> outputSinglefieldRuleList = new ArrayList<>();
+            if (allowedValues != null) {
+                for (Document allowed : allowedValues) {
+                    Document entry = new Document();
+                    for (String key : allowed.keySet()) {
+                        entry.put(key, allowed.get(key));
+                    }
+                    outputSinglefieldRuleList.add(entry);
+                }
+            } else {
+                // Handle case where AllowedValues is not a list of Document (e.g., ListStr)
+                Object allowed = description.get("AllowedValues");
+                if (allowed instanceof Document) {
+                    outputSinglefieldRuleList.add((Document) allowed);
+                }
+            }
+
+            Document result = new Document();
+            result.put(policyField, outputSinglefieldRuleList);
+            outputAllfieldRuleList.add(result);
+             
+        }
+        return outputAllfieldRuleList;
+         /* // convert the list to a json array string
+        ObjectMapper mapper = new ObjectMapper();
+        try{
+        String jsonArrayStr = mapper.writeValueAsString(outputAllfieldRuleList);
+        System.out.println("JSON Array String: " + jsonArrayStr);
+        // print the below LinkedHashMap
+        System.out.println(convertAndRearrange(jsonArrayStr).toString());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        } */
+    }
+
+    public static LinkedHashMap<String, List<Document>> convertAndRearrange(String jsonArrayStr) throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        List<Map<String, Object>> mainDocs = mapper.readValue(jsonArrayStr, new TypeReference<List<Map<String, Object>>>(){});
+
+        // Step 1: Load all FieldKeys into FieldKeysList
+        List<String> fieldKeysList = new ArrayList<>();
+        for (Map<String, Object> mainDoc : mainDocs) {
+            fieldKeysList.addAll(mainDoc.keySet());
+        }
+ 
+        // Step 2: Convert to LinkedHashMap for ordered insertion
+        LinkedHashMap<String, List<Document>> resultMap = new LinkedHashMap<>();
+
+        // Step 3: Prepare a list to hold docs to be pushed to the end
+        List<Map.Entry<String, List<Document>>> pushToEnd = new ArrayList<>();
+
+        for (Map<String, Object> mainDoc : mainDocs) {
+            for (Map.Entry<String, Object> entry : mainDoc.entrySet()) {
+                String fieldKey = entry.getKey();
+                List<Document> ruleDocItrList = new ArrayList<>();
+     
+                Object rulesObj = entry.getValue();
+
+                if (rulesObj instanceof List) {
+                    List<?> rulesList = (List<?>) rulesObj;
+                    for (Object ruleObj : rulesList) {
+                        Document ruleDoc = new Document((Map<String, Object>) ruleObj);
+
+                        // Check for keys that don't contain "List" or "Range"
+                        boolean hasDependentKey = false;
+                        for (String ruleKey : ruleDoc.keySet()) {
+                            if (!ruleKey.contains("List") && !ruleKey.contains("Range")) {
+                                if (fieldKeysList.contains(ruleKey)) {
+                                    hasDependentKey = true;
+                                    // Rearrangement: push below referenced FieldKey
+                                    // Remove current and add after referenced key
+                                    // We'll handle this after initial pass
+                                    break;
+                                }
+                            }
+                        }
+                        ruleDocItrList.add(ruleDoc);
+                    }
+                }
+                resultMap.put(fieldKey, ruleDocItrList);
+            }
+        }
+ 
+        // create variable resultMapCopy cloning resultMap
+        LinkedHashMap<String, List<Document>> resultMapCopy = new LinkedHashMap<>(resultMap);
+
+        // Step 4: Rearrangement logic
+        // For each entry, if any RuleDocItr references another FieldKey, move this entry after the referenced FieldKey
+        List<String> unorderedKeys = new ArrayList<>(resultMap.keySet());
+        Set<String> uniqueKeys = new LinkedHashSet<>();
+
+        // create a new List<String> unique using Set
+        Map<String, List<String>> KeysDeps = new LinkedHashMap<>();
+         
+        // Organize dependencies in KeysDeps
+        //"Key1" : ["DepKey1_Key4", "DepKey1_Key3"]
+        //"Key2" : ["DepKey1_Key3"]
+        //"Key3" : []
+        //"Key4" : ["DepKey1_Key2"]
+        for (String key : new ArrayList<>(unorderedKeys)) {
+            List<Document> ruleDocs = resultMap.get(key);
+            for (Document ruleDoc : ruleDocs) {
+                for (String ruleKey : ruleDoc.keySet()) {
+                    if (!ruleKey.contains("List") && !ruleKey.contains("Range")) {
+                         
+                        if (fieldKeysList.contains(ruleKey) && !ruleKey.equals(key)) {
+                            // Get the dependent field and load it into unique key
+                            int Dep_idx = unorderedKeys.indexOf(ruleKey);
+                            if (KeysDeps.get(key)!=null){
+                                if (!KeysDeps.get(key).contains(unorderedKeys.get(Dep_idx)))
+                                  {KeysDeps.get(key).add(unorderedKeys.get(Dep_idx));}
+                            } else {
+                                KeysDeps.put(key, new ArrayList<>(Collections.singletonList(unorderedKeys.get(Dep_idx))));
+                            }
+                             
+                        }
+                    }
+                }
+            }
+
+            if (KeysDeps.get(key)==null) KeysDeps.put(key, new ArrayList<>());
+             
+        }
+
+        // based on the sample sequence 
+        //"Key1" : ["DepKey1_Key4", "DepKey1_Key3"]
+        //"Key2" : ["DepKey1_Key3"]
+        //"Key3" : []
+        //"Key4" : ["DepKey1_Key2"]
+
+        //has to be seqeunced as Key3, Key2, Key4, Key1
+
+        String jsonArrayStr1 = new Gson().toJson(KeysDeps);
+        System.out.println("KeysDeps JSON: " + jsonArrayStr1);
+        // Now rearrange unorderedKeys based on dependencies in KeysDeps
+        while(uniqueKeys.size() != KeysDeps.size()){
+            for (String key : KeysDeps.keySet()) {
+                int DepCount = KeysDeps.get(key).size();
+                while(DepCount>0){
+                    String dep = KeysDeps.get(key).get(DepCount-1);
+                    if (uniqueKeys.contains(dep))
+                            KeysDeps.get(key).remove(dep);
+                    DepCount--;
+                }
+                DepCount = KeysDeps.get(key).size();
+                if (DepCount==0) uniqueKeys.add(key);
+
+            } 
+        }
+ 
+
+        // Rebuild LinkedHashMap in new order
+        LinkedHashMap<String, List<Document>> finalMap = new LinkedHashMap<>();
+        for (String key : uniqueKeys) {
+            if (resultMap.containsKey(key)) {
+                finalMap.put(key, resultMap.get(key));
+            }
+        }
+
+        return finalMap;
+        
+    }
+    
+    
+    public static void UpdatePolTest() {
+        // Implementation for updating PolMaster documents
+        MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017");
+        MongoDatabase db = mongoClient.getDatabase("PolDB");
+
+        // Read PolRef rules for PolStakes
+        MongoCollection<Document> polRef = db.getCollection("PolRef");
+        List<Document> rules = polRef.find(new Document("PolicyTable", "PolTest")).into(new ArrayList<>());
+
+         
+
+        // Update PolStakes documents
+        MongoCollection<Document> recordCollectionMongo = db.getCollection("PolStakes");
+        FindIterable<Document> recordCollection = recordCollectionMongo.find();
+         
+       try{ 
+        for (Document recordDoc : recordCollection) { 
+          ObjectMapper mapper = new ObjectMapper();
+          processConfigLinkedHashMap(convertAndRearrange(mapper.writeValueAsString(convertPolicyConfig())),
+          recordDoc);
+          break;
+        }
+    }catch(Exception e){e.printStackTrace();}
+
+    }
+
+
+public static void processConfigLinkedHashMap(
+        LinkedHashMap<String, List<Document>> configLinkedHashMap,
+        Document recordDoc
+) {
+    List<String> configTypes = Arrays.asList("RangeInt", "ListStr");
+    List<Map<String, Object>> possibleCondFieldLevel = new ArrayList<>();
+
+    for (Map.Entry<String, List<Document>> entry : configLinkedHashMap.entrySet()) {
+        possibleCondFieldLevel.clear();
+        String configKey = entry.getKey();
+        List<Document> configLinkedHashMapValueList = entry.getValue();
+
+        for (Document configLinkedHashMapValueInstance : configLinkedHashMapValueList) {
+            String matchingConfigType = null, DependentConditionskey = null;
+
+                // compare configLinkedHashMapValueInstance.keySet() with configtypes and find 1st matching using list comparator
+                 matchingConfigType = configTypes.stream()
+                        .filter(configLinkedHashMapValueInstance::containsKey)
+                        .findFirst()
+                        .orElse(null);
+
+                if (matchingConfigType == null) continue;
+                
+                    // Condition type found
+                    Map<String, Object> condMap = new HashMap<>();
+                    condMap.put("ConfigLinkedHashMapValueInstanceCondType", matchingConfigType);
+                    condMap.put("ConfigLinkedHashMapValueInstanceCondValue", configLinkedHashMapValueInstance.get(matchingConfigType));
+                    possibleCondFieldLevel.add(condMap);
+                
+                // compare configLinkedHashMapValueInstance.keySet() with configtypes and filter non matching records alone
+                DependentConditionskey = configLinkedHashMapValueInstance.keySet().stream()
+                        .filter(key -> !configTypes.contains(key))
+                        .findFirst()
+                        .orElse(null);
+
+
+                if (DependentConditionskey == null) continue; // skipping if no dependents else below process
+                
+                { 
+                      // Dependent key
+                    String depKey = DependentConditionskey;
+                    Object depValue = configLinkedHashMapValueInstance.get(DependentConditionskey);
+
+                    // Handle nested keys (dot notation)
+                    Object recordDocDepValue = getNestedValue(recordDoc, depKey);
+                    boolean matchDepValRecVal = false;
+                    
+                    if (recordDocDepValue != null) {
+
+                        // Convert to List<String> if value is a list
+                        List<String> recordDocDepValueList = new ArrayList<>();
+                        if (recordDocDepValue instanceof List) {
+                            for (Object obj : (List<?>) recordDocDepValue) {
+                                recordDocDepValueList.add(obj.toString());
+                            }
+                        } else if (recordDocDepValue != null) {
+                            recordDocDepValueList.add(recordDocDepValue.toString());
+                        }
+                        System.out.println("Printing RecordDep:");
+                        recordDocDepValueList.stream().forEach(System.out::println);
+
+                        // Compare values but depValue would always be a single value not  a list as per current design
+                        if (depValue instanceof List) {
+                            List<String> depValueList = new ArrayList<>();
+                            for (Object obj : (List<?>) depValue) {
+                                depValueList.add(obj.toString());
+                            }
+                            matchDepValRecVal = recordDocDepValueList.containsAll(depValueList);
+                            System.out.println("Dep val in PolRefList: " + depValueList);
+                        } else {
+                            matchDepValRecVal = recordDocDepValueList.contains(depValue.toString());
+                            System.out.println("Dep val in PolRef: " + depValue);
+                        }
+                        
+
+                    }
+
+                    if ((!matchDepValRecVal || recordDocDepValue==null)  && matchingConfigType != null){
+                        final String configTypeToRemove = matchingConfigType;
+                        // remove the recent addition to possibleCondFieldLevel
+                         
+                        possibleCondFieldLevel.removeLast();
+                    }
+                }
+            
+            }
+        
+        // Print the result
+        System.out.println("FieldKey:" + configKey + "\n" +"PossibleCondFieldLevel: " + possibleCondFieldLevel);
+        }
+}
+
+private static Object getNestedValue(Document doc, String key) {
+    String[] keyParts = key.split("\\.");
+    return getNestedValueRecursive(doc, keyParts, 0);
+}
+
+private static Object getNestedValueRecursive(Object current, String[] keyParts, int index) {
+    if (current == null || index >= keyParts.length) {
+        return current;
+    }
+    String key = keyParts[index];
+
+    if (current instanceof Document) {
+        Object next = ((Document) current).get(key);
+        return getNestedValueRecursive(next, keyParts, index + 1);
+    } else if (current instanceof List) {
+        List<Object> results = new ArrayList<>();
+        for (Object item : (List<?>) current) {
+            Object result = getNestedValueRecursive(item, keyParts, index);
+            if (result != null) {
+                if (result instanceof List) {
+                    results.addAll((List<?>) result);
+                } else {
+                    results.add(result);
+                }
+            }
+        }
+        return results.isEmpty() ? null : results;
+    } else {
+        return null;
+    }
+}
+ 
+}
