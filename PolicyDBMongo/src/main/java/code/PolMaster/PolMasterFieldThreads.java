@@ -67,9 +67,8 @@ public class PolMasterFieldThreads {
         }
     }
 
-    public static void getLinkedfields() {
-
-        MongoDatabase db = mongoClient.getDatabase("PolDB");
+    public static Map<String,List<String>> getKeysandDepedencies( String DBname, String CollectionName){
+MongoDatabase db = mongoClient.getDatabase("PolDB");
 
         // Read PolRef rules for PolMaster
         MongoCollection<Document> polRef = db.getCollection("PolRef");
@@ -183,11 +182,16 @@ public class PolMasterFieldThreads {
              
         }
 
-        // print the KeysDeps
-        String jsonArrayStr2 = new Gson().toJson(KeysDeps);
-        System.out.println("KeysDeps JSON: " + jsonArrayStr2);
+        return KeysDeps;
+    }
 
-        List<String> CollectionFieldList = getCollectionFieldList("PolDB", "PolMaster"); 
+
+
+    public static void getLinkedfields() {
+
+
+        List<String> CollectionFieldList = getCollectionFieldList("PolDB", "PolMaster");
+        Map<String,List<String>> KeysDeps = getKeysandDepedencies("PolDB", "PolMaster");
 
         // Create a CountDownLatch for each field in KeysDeps.keySet()
         Map<String, CountDownLatch> latchMap = new HashMap<>();
@@ -197,13 +201,28 @@ public class PolMasterFieldThreads {
             
         }
 
-        LinkedHashMap<String, List<String>> LoadedFinal = new LinkedHashMap<>();
+        // get the values (List<String>) of KeysDeps and flatten it to a single list
+        Set<String> flattenedParents = KeysDeps.entrySet().stream().flatMap(entry -> entry.getValue().stream().distinct()).collect(Collectors.toSet());
+        // compare each values of flattenedParents with the latchMap values and if found,load it in map with flatterrnedDeps value as key and latchmap corresponding keys as value
+        Map<String, Set<String>> reverseDeps = new HashMap<>();
+        for (String dep : flattenedParents) {
+            for (Map.Entry<String, CountDownLatch> entry : latchMap.entrySet()) {
+                String key = entry.getKey();
+                if (KeysDeps.get(key).contains(dep)) {
+                    reverseDeps.computeIfAbsent(dep, k -> new HashSet<>()).add(key);
+                }
+            }
+        }
+
+
+
+        LinkedHashMap<String, LinkedList<String>> LoaderFinal = new LinkedHashMap<>();
         LinkedHashMap<String, List<String>> LoggerFinal = new LinkedHashMap<>();
         // Create a thread pool
         ExecutorService executor = Executors.newCachedThreadPool();
         try{
         // Start a thread for each field in CollectionFieldList
-        for (String field : CollectionFieldList) {
+        for (String field : CollectionFieldList.stream().filter(x -> !x.equals("PolicyType")).collect(Collectors.toList())) {
 
             executor.execute(() -> {
                 LoggerFinal.put(field, new ArrayList<>());
@@ -233,7 +252,7 @@ public class PolMasterFieldThreads {
                     }
                 }
                 else{
-                    LoadedFinal.put(field, new ArrayList<>());
+                    LoaderFinal.put(field, new LinkedList<>());
 
                 }
 
@@ -248,26 +267,14 @@ public class PolMasterFieldThreads {
             System.out.println("Exception in threads: "+ e.getMessage());
         }
         
-        // get the values (List<String>) of KeysDeps and flatten it to a single list
-        Set<String> flattenedDeps = KeysDeps.entrySet().stream().flatMap(entry -> entry.getValue().stream().distinct()).collect(Collectors.toSet());
-        // compare each values of flattenedDeps with the latchMap values and if found,load it in map with flatterrnedDeps value as key and latchmap corresponding keys as value
-        Map<String, Set<String>> reverseDeps = new HashMap<>();
-        for (String dep : flattenedDeps) {
-            for (Map.Entry<String, CountDownLatch> entry : latchMap.entrySet()) {
-                String key = entry.getKey();
-                if (KeysDeps.get(key).contains(dep)) {
-                    reverseDeps.computeIfAbsent(dep, k -> new HashSet<>()).add(key);
-                }
-            }
-        }
-
+    
         // print the reverseDeps
         String jsonArrayStr3 = new Gson().toJson(reverseDeps);
         System.out.println("reverseDeps JSON: " + jsonArrayStr3);
 
         // read flattenDeps key, create a thread for each using executor.execute , within thread print each of its values
         try{
-        for (String parentfld : flattenedDeps) {
+        for (String parentfld : flattenedParents) {
             executor.execute(() -> {
                 System.out.println("Dependency thread triggered by Parent " + parentfld + " started              @ " + Instant.now());
                 try {
@@ -276,49 +283,52 @@ public class PolMasterFieldThreads {
                     Thread.currentThread().interrupt();
                 }
 
+                if (LoaderFinal.get(parentfld) == null) throw new IllegalStateException("Parent field " + parentfld + " not found in LoaderFinal map.");
                 if (reverseDeps.containsKey(parentfld)) {
                     for (String childfld : reverseDeps.get(parentfld)) {
                         if (latchMap.containsKey(childfld)) {
-                              List<String> gparentflds = LoadedFinal.entrySet().stream()
+                              List<String> gparentflds = LoaderFinal.entrySet().stream()
                                                             .filter(x -> x.getKey().contains(parentfld))
                                                             .flatMap(x-> x.getValue().stream())
                                                             .distinct()
                                                             .collect(Collectors.toList());
 
-                            if (!LoadedFinal.keySet().contains(childfld)){
+                            if (!LoaderFinal.keySet().contains(childfld)){
                                   if (gparentflds.size() > 0) {//  if both a parent & a child
                                      LinkedList<String> tempParentsList = new LinkedList<>();
                                      tempParentsList.addAll(gparentflds);
                                      tempParentsList.add(0, parentfld); // add parentfld as the first element
-                                     LoadedFinal.put(childfld, tempParentsList);
+                                     LoaderFinal.put(childfld, tempParentsList);
                                      LoggerFinal.get(childfld).add("Child " + childfld + " loaded with grandparents as Linkedlist " + gparentflds + " @ " + Instant.now());
                                  }
                                  else{
-                                     List<String> tempParentsList = new ArrayList<>();
+                                     LinkedList<String> tempParentsList = new LinkedList<>();
                                      tempParentsList.add(parentfld);
-                                     LoadedFinal.put(childfld, tempParentsList);
-                                     LoggerFinal.get(childfld).add("Child " + childfld + " loaded with parent as Arraylist " + parentfld + " @ " + Instant.now());
+                                     LoaderFinal.put(childfld, tempParentsList);
+                                     LoggerFinal.get(childfld).add("Child " + childfld + " loaded with parent as Linkedlist " + parentfld + " @ " + Instant.now());
                                  }
                             } else{
                                 if (gparentflds.size() > 0){
-                                    if (LoadedFinal.get(childfld) instanceof LinkedList){
-                                            LoadedFinal.get(childfld).addAll(gparentflds);
-                                            LoadedFinal.get(childfld).add(parentfld);
+                                    if (LoaderFinal.get(childfld) instanceof LinkedList){
+                                            LoaderFinal.get(childfld).addAll(gparentflds);
+                                            LoaderFinal.get(childfld).add(parentfld);
                                             LoggerFinal.get(childfld).add("Child " + childfld + " loaded with grandparents into exisitng  Linkedlist " + gparentflds + " @ " + Instant.now());
                                     }
+                                    /*
                                     else {
                                         LinkedList<String> tempParentsList = new LinkedList<>();
-                                        tempParentsList.addAll(LoadedFinal.get(childfld));
+                                        tempParentsList.addAll(LoaderFinal.get(childfld));
                                         tempParentsList.addAll(gparentflds);
                                         tempParentsList.add(parentfld);
-                                        LoadedFinal.replace(childfld, tempParentsList);
-                                        LoggerFinal.get(childfld).add("Child " + childfld + " loaded with parent converted to an existing LinkedList " + parentfld + " @ " + Instant.now());
+                                        LoaderFinal.replace(childfld, tempParentsList);
+                                        LoggerFinal.get(childfld).add("Child " + childfld + " loaded with parent converted to a LinkedList " + parentfld + " @ " + Instant.now());
                                     }
+                                    */
                                 }
                                 else {
                                      
-                                    LoadedFinal.get(childfld).add(parentfld);
-                                    LoggerFinal.get(childfld).add("Child " + childfld + " loaded with parent as Arraylist " + parentfld + " @ " + Instant.now());
+                                    LoaderFinal.get(childfld).add(parentfld);
+                                    LoggerFinal.get(childfld).add("Child " + childfld + " loaded with parent as Linkedlist " + parentfld + " @ " + Instant.now());
                                 }
 
                             }
@@ -337,14 +347,14 @@ public class PolMasterFieldThreads {
             Thread.sleep(1000); // Stagger different field thread starts slightly
         }
 
-        Thread.sleep(120_000); // Main thread sleeps to allow all tasks to complete
+        Thread.sleep(60_000); // Main thread sleeps to allow all tasks to complete
         }
         catch(Exception e){
             System.out.println("Exception in dependency threads: "+ e.getMessage());
             
         }
 
-        LoadedFinal.entrySet().forEach(x -> {
+        LoaderFinal.entrySet().forEach(x -> {
             System.out.print("\n" + " ChildKey: " + x.getKey() + " Parents: ");
             x.getValue().forEach(y -> System.out.print(y + "/ "));
              
@@ -357,7 +367,7 @@ public class PolMasterFieldThreads {
         });
         // Optionally, shutdown the executor after all tasks are submitted
         
-
+         
         executor.shutdown();
     }
 }

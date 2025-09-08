@@ -25,7 +25,7 @@ public class Main {
         //code.PolMasterCreation.PolMasterCreation.insertNullPolMaster();
         //code.PolMasterCreation.PolMasterMocker.UpdatePolTest();
         
-        PolMasterFieldThreads.getLinkedfields();
+        PolMasterFieldThreadsv2.getLinkedfieldsv2();
         //PolDBtables.UpdatePolTest();
      //ConfigurableApplicationContext context = SpringApplication.run(Main.class, args);
 
