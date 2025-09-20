@@ -21,26 +21,32 @@ public interface ResponseHibernateRepository extends JpaRepository<ResponseTeam,
     public Optional<ResponseTeam> findByMember(String member);
 
     @Transactional(readOnly = true)
+    @Query(value = "SELECT * FROM responseteam WHERE ?1 = id",  nativeQuery = true)
+    public Optional<ResponseTeam> findById(long id);
+
+    @Transactional(readOnly = true)
     @Query(value = "SELECT * FROM responseteam WHERE ?1 = teamname",  nativeQuery = true)
     public Optional<ResponseTeam> findByTeamName(String teamName);
 
     @Transactional(readOnly = true)
-    @Query(value = "SELECT * FROM responseteam WHERE incidents @> jsonb_build_array(jsonb_build_object('incidentId', CAST(?1 AS bigint)))",
+    @Query(value = "SELECT * FROM responseteam WHERE incidents @> jsonb_build_array(jsonb_build_object('incidentId', ?1))",
                nativeQuery = true)
-    public Optional<ResponseTeam> findByINC(Long incidentId);
+    public Optional<ResponseTeam> findByINC(String incidentId);
 
      
     @Modifying
+    @Transactional
         @Query(value = """
             UPDATE responseteam 
-            SET incidents = (
+            SET incidents = COALESCE((
             SELECT jsonb_agg(incident) 
             FROM jsonb_array_elements(incidents) AS incident 
             WHERE incident->>'incidentId' != ?2
+), '[]'::jsonb
         )
         WHERE teamname = ?1
         """, nativeQuery = true)
-    public int detachIncidentById(String teamname, Long incidentId);
+    public int detachIncidentById(String teamname, String incidentId);
 
 
 /*    @Modifying
@@ -66,31 +72,31 @@ public interface ResponseHibernateRepository extends JpaRepository<ResponseTeam,
         @Query(value = """
         UPDATE responseteam
         SET incidents = (
-            SELECT jsonb_agg(
-                CASE
-                WHEN (incident->>'incidentId')::bigint = :incidentId THEN
-                    incident
-                    || COALESCE(
-                        CASE WHEN :newStatus IS NOT NULL THEN jsonb_build_object('status', :newStatus) END,
-                        '{}'::jsonb
-                    )
-                    || COALESCE(
-                        CASE WHEN :assignee IS NOT NULL THEN jsonb_build_object('assignee', :assignee) END,
-                        '{}'::jsonb
-                    )
-                    || COALESCE(
-                        CASE WHEN :activitytimestamp IS NOT NULL THEN jsonb_build_object('activitytimestampinUTCString', :activitytimestamp) END,
-                        '{}'::jsonb
-                    )
-                ELSE incident
+        SELECT jsonb_agg(
+            CASE
+            WHEN (incident->>'incidentId') = :incidentId THEN
+                incident
+                || COALESCE(
+                    CASE WHEN :newStatus IS NOT NULL THEN jsonb_build_object('status', :newStatus) END,
+                    '{}'::jsonb
+                )
+                || COALESCE(
+                    CASE WHEN :assignee IS NOT NULL THEN jsonb_build_object('assignee', :assignee) END,
+                    '{}'::jsonb
+                )
+                || COALESCE(
+                    CASE WHEN :activitytimestamp IS NOT NULL THEN jsonb_build_object('activitytimestampinUTCString', :activitytimestamp) END,
+                    '{}'::jsonb
+                )
+            ELSE incident
             END
         )
-        FROM jsonb_array_elements(incidents) AS incident
+        FROM jsonb_array_elements(responseteam.incidents) AS incident
     )
     WHERE teamname = :teamname
-      AND incidents @> jsonb_build_array(jsonb_build_object('incidentId', :incidentId))
+    AND incidents @> jsonb_build_array(jsonb_build_object('incidentId', :incidentId))
     """, nativeQuery = true)
 
-    public int updateIncidentDetails(String teamname, Long incidentId, String newStatus, String assignee, String activitytimestamp);        
+    public int updateIncidentDetails(String teamname, String incidentId, String newStatus, String assignee, String activitytimestamp);        
 }
 

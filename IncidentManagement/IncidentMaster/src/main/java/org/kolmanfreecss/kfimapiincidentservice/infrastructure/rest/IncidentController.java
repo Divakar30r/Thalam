@@ -5,12 +5,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.kolmanfreecss.kfimapiincidentservice.application.dto.IncidentCreateRequestDto;
 import org.kolmanfreecss.kfimapiincidentservice.application.dto.IncidentDto;
 import org.kolmanfreecss.kfimapiincidentservice.application.services.IncidentService;
 import org.kolmanfreecss.kfimapiincidentservice.infrastructure.rest.model.ResponseWrapper;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -33,8 +35,8 @@ public class IncidentController {
     @ApiResponse(responseCode = "201", description = "Incident saved successfully")
     @ApiResponse(responseCode = "500", description = "Error saving Incident")
     @PostMapping("/")
-    public Mono<ResponseWrapper<IncidentDto>> saveUser(final @RequestBody IncidentDto incidentDto) {
-        return incidentService.create(incidentDto)
+    public Mono<ResponseWrapper<IncidentDto>> saveUser(final @RequestBody @Valid IncidentCreateRequestDto incidentCreateRequestDto) {
+        return incidentService.create(incidentCreateRequestDto)
                 .map(e -> new ResponseWrapper<>(e, "Incident saved successfully"))
                 .onErrorResume(e -> {
                     log.error("Error saving incident", e);

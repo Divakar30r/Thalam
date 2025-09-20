@@ -13,6 +13,8 @@ import reactor.core.publisher.Mono;
  */
 public interface IncidentEventHandlerPort {
     
-    Mono<Void> sendIncident(final IncidentDto incidentDto);
+    //Mono<Void> sendIncident(final IncidentDto incidentDto);
+
+    Mono<Void> sendIncidentToPartition(final IncidentDto incidentDto, final String key, final Integer partition);
     
 }

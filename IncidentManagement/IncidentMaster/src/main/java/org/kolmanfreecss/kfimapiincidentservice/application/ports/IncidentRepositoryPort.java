@@ -21,6 +21,8 @@ public interface IncidentRepositoryPort {
     Mono<List<Incident>> getAll();
     
     Mono<Optional<Incident>> getById(final Long id);
+
+    Mono<Optional<Incident>> getByIncidentId(final String incidentId);
     
     Mono<Incident> update(final Incident incident);
     

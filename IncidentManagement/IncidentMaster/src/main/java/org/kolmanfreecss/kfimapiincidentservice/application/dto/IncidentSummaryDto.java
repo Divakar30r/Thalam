@@ -1,4 +1,5 @@
-package org.kolmanfreecss.kfimapiresponseservice.shared.dto;
+
+package org.kolmanfreecss.kfimapiincidentservice.application.dto;
 
  
 
@@ -22,7 +23,7 @@ public class IncidentSummaryDto  {
       
  
     @JsonProperty
-    @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED, description = "Unique ID of the incident")
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Unique ID of the incident")
     private String incidentId;
 
     @JsonProperty
@@ -38,7 +39,8 @@ public class IncidentSummaryDto  {
     private String assignee;
 
     @JsonProperty
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Timestamp of the recent activity on the incident")
+    @Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED, description = "Timestamp of the recent activity on the incident")
     private String activitytimestampinUTCString;
 
 }
+

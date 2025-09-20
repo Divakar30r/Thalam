@@ -10,5 +10,10 @@
   "HOLD": {
     "prvSts": ["INPROGRESS", "ASSIGNED", "", "REOPENED"],
     "Mandatory": ["incidentId"]
+  },
+  "OPEN":{
+    "prvSts": [],
+    "Mandatory": ["incidentId","Team"]
   }
+
 }

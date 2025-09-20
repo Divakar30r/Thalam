@@ -1,9 +1,9 @@
 package org.kolmanfreecss.kfimapiresponseservice.application.services;
 
-import org.kolmanfreecss.kfimapiresponseservice.shared.exceptions.*; 
-import org.kolmanfreecss.kfimapiresponseservice.application.ResponseRepository;
+import org.kolmanfreecss.kfimapiresponseservice.shared.exceptions.*;
 import org.kolmanfreecss.kfimapiresponseservice.application.dto.ResponseTeamDto;
 import org.kolmanfreecss.kfimapiresponseservice.application.mappers.ResponseConverter;
+import org.kolmanfreecss.kfimapiresponseservice.infrastructure.adapters.in.KafkaConsumer;
 import org.kolmanfreecss.kfimapiresponseservice.shared.dto.IncidentSummaryDto;
 import org.kolmanfreecss.kfimapiresponseservice.application.*;
 
@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,22 +41,24 @@ public class ResponseService {
     Logger log = LoggerFactory.getLogger(ResponseService.class);
     private final ResponseRepository responseRepository;
     
-    //private final ResponseEventHandlerPort ResponseEventHandlerPort;
-    
+       
     private final ResponseConverter responseConverter;
     private final ResponseIncidentService responseIncidentService;
     
     
     public ResponseService(@Lazy @Qualifier("responseHibernateRepositoryImplBean") final ResponseRepository responseRepository,
-                           //final ResponseEventHandlerPort ResponseEventHandlerPort,
                            final ResponseConverter responseConverter, final ResponseIncidentService responseIncidentService) {
         this.responseRepository = responseRepository;
-        //this.ResponseEventHandlerPort = ResponseEventHandlerPort;
         this.responseConverter = responseConverter;
-        this.responseIncidentService = responseIncidentService;
+        this.responseIncidentService = responseIncidentService;  
+        
     }
     
     public ResponseTeamDto createTeam(final ResponseTeamDto responseTeamDto) {
+         
+        if (responseTeamDto.getMembers() == null) responseTeamDto.setMembers(new ArrayList<String>());
+        if (responseTeamDto.getIncidents() == null) responseTeamDto.setIncidents(new ArrayList<IncidentSummaryDto>());
+        
        return this.responseConverter.toDto(this.responseRepository.create(this.responseConverter.toEntity(responseTeamDto)));
     }
     public List<ResponseTeamDto> getAllItems() {
@@ -67,7 +72,10 @@ public class ResponseService {
                 
     }
 
-    public ResponseTeamDto attachMembers(final ResponseTeamDto responseTeamDto) {
+    public ResponseTeamDto attachMembers(final ResponseTeamDto responseTeamDto) throws TeamNotFoundException {
+        if (this.responseRepository.findByTeamName(responseTeamDto.getTeamName()).isEmpty())
+             throw new TeamNotFoundException("Team not found: " + responseTeamDto.getTeamName(), responseTeamDto);
+
         ResponseTeamDto Ref_ResponseTeamDto = this.responseConverter.toDto(this.responseRepository.findByTeamName(responseTeamDto.getTeamName()).get());
         List<String> w_members = Ref_ResponseTeamDto.getMembers();
         responseTeamDto.getMembers().forEach(member_itr-> {
@@ -109,31 +117,20 @@ public class ResponseService {
     }
 
     public String handleIncident(ResponseTeamDto responseTeamDto) throws InvalidInputException, UpdFailureException, Exception {
-        System.out.println("Inside handleIncident with event type: " + responseTeamDto.getIncidents().getFirst().getEventtype());
-        if (responseTeamDto.getIncidents().getFirst().getEventtype().toUpperCase().equals("ASSIGN")){
-            System.out.println("Reached ASSIGN condition");
+        System.out.println("Inside handleIncident of ResponseService: " + getResponseTeamDtoasString(responseTeamDto));
+        System.out.println("Count before any " + this.responseRepository.getById(6L).get().getIncidents().size());
+        if (responseTeamDto.getIncidents().getFirst().getEventtype().toUpperCase().equals("OPEN")){
+            return responseIncidentService.addIncident(responseTeamDto);
+        }else if (responseTeamDto.getIncidents().getFirst().getEventtype().toUpperCase().equals("ASSIGN")){
             return responseIncidentService.assignIncident(responseTeamDto);
         }
         else{
-            System.out.println("Reached NON ASSIGN condition");
             return responseIncidentService.updateIncident(responseTeamDto);
         }
-         
-    
-    
     }
 
-
-    @Transactional(propagation = Propagation.SUPPORTS)
-    // This method is used to run transactional code receiving Runnable object and just execute it  accept any type out of output as return
-    public <T> T RunTransactional(java.util.function.Function<String, T> runnable) throws InvalidInputException, UpdFailureException, Exception {
-        return runnable.apply("RunTransactional");
-    }
-
-    @Transactional
-    public <T> T RunTransactional(Callable<T> task) throws InvalidInputException, UpdFailureException, Exception {
-        return task.call();
-    }
+ 
+ 
     
     public String getResponseTeamDtoasString(ResponseTeamDto responseTeamDto){
         try {

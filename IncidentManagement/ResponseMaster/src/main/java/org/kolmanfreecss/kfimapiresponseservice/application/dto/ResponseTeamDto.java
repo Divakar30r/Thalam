@@ -23,12 +23,15 @@ import org.kolmanfreecss.kfimapiresponseservice.shared.dto.IncidentSummaryDto;
 @AllArgsConstructor
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL) 
-@JsonPropertyOrder({"teamName", "members", "incidents"})
+@JsonPropertyOrder({"id","teamName", "members", "incidents"})
 public class ResponseTeamDto implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 5865597278076349945L;
  
+    
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Internal ID") 
+    private Long id;
 
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "Name of the team") 
     private String teamName;

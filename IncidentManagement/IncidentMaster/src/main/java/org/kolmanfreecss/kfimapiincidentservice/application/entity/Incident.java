@@ -24,7 +24,9 @@ public class Incident {
         REPORTED,
         IN_PROGRESS,
         RESOLVED,
-        CLOSED
+        CLOSED,
+        OPEN,
+        ASSIGNED
     }
     
     public enum Priority {
@@ -38,10 +40,18 @@ public class Incident {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Long id;
     
+    @Column(nullable = false, unique = true, name = "incidentid")
+    String incidentId;
+    
+    
     @Column(nullable = false)
     String title;
     
     String description;
+
+    String keydata;
+
+    String complexitylevel;
     
     @Enumerated(EnumType.STRING)
     Status status;
@@ -49,10 +59,10 @@ public class Incident {
     @Enumerated(EnumType.STRING)
     Priority priority;
     
-    @Column(name = "report_date")
+    @Column(name = "reportdate")
     Date reportDate;
     
-    @Column(name = "resolution_date")
+    @Column(name = "resolutiondate")
     Date resolutionDate;
     
 }

@@ -22,10 +22,10 @@ public interface ResponseRepository {
 
     Optional<ResponseTeam> findByTeamName(String teamName);
 
-    Optional<ResponseTeam> findByINC(Long incidentId);
+    Optional<ResponseTeam> findByINC(String incidentId);
 
-    int detachIncidentById(String teamname, Long incidentId);
+    int detachIncident(String teamname, String incidentId);
 
-    int updateIncidentDetailsEvent(String teamname, Long incidentId, String newStatus, String assignee, String activitytimestamp);
+    int updateIncidentDetailsEvent(String teamname, String incidentId, String newStatus, String assignee, String activitytimestamp);
 } 
 

@@ -62,12 +62,13 @@ public class ResponseHibernateRepositoryImpl  implements ResponseRepository {
     }            
 
     public Optional<ResponseTeam> findByMember(final String member) {
-         if (responseHibernateRepository.findByMember(member).isEmpty()){
+        Optional<ResponseTeam> responseTeamMemberCheck = responseHibernateRepository.findByMember(member);
+         if (responseTeamMemberCheck.isEmpty()){
             return Optional.empty();
         }
         else{
             try{
-            return responseHibernateRepository.findByMember(member);
+            return responseTeamMemberCheck;
             }catch(IncorrectResultSizeDataAccessException e){
                 System.out.println("Duplicate members found - Contact Admin");
                 return Optional.empty();
@@ -76,20 +77,21 @@ public class ResponseHibernateRepositoryImpl  implements ResponseRepository {
 
     }
 
-    public Optional<ResponseTeam> findByTeamName(final String member) {
+    public Optional<ResponseTeam> findByTeamName(final String teamName) {
         
-        return responseHibernateRepository.findByTeamName(member);
+        return responseHibernateRepository.findByTeamName(teamName);
 
     }
 
-    public Optional<ResponseTeam> findByINC(final Long incidentId) {
+    public Optional<ResponseTeam> findByINC(final String incidentId) {
         try{
-            if (responseHibernateRepository.findByINC(incidentId).isEmpty()){
+            Optional<ResponseTeam> responseTeamCheck = responseHibernateRepository.findByINC(incidentId);
+            if (responseTeamCheck.isEmpty()){
                 return Optional.empty();
             }
             else{
                 System.out.println("Incident found in team: " );
-                responseTeam =  responseHibernateRepository.findByINC(incidentId).get();
+                responseTeam =  responseTeamCheck.get();
                 incidentsList = responseTeam.getIncidents().stream()
                 .filter(incident -> incident.getIncidentId().equals(incidentId)).toList();
 
@@ -103,11 +105,11 @@ public class ResponseHibernateRepositoryImpl  implements ResponseRepository {
 
     }
 
-    public int detachIncidentById(final String teamName, final Long incidentId) {
+    public int detachIncident(final String teamName, final String incidentId) {
         return responseHibernateRepository.detachIncidentById(teamName, incidentId);
     }
 
-    public int updateIncidentDetailsEvent(final String teamName, final Long incidentId, final String newStatus, final String assignee,final String activitytimestamp) {
+    public int updateIncidentDetailsEvent(final String teamName, final String incidentId, final String newStatus, final String assignee,final String activitytimestamp) {
         return responseHibernateRepository.updateIncidentDetails(teamName, incidentId, newStatus, assignee, activitytimestamp);
     }
 

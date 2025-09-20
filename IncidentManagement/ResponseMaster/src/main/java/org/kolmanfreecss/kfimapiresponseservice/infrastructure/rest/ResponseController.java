@@ -20,7 +20,7 @@ import java.util.List;
  
 @AllArgsConstructor
 @RestController
-@RequestMapping("/api/v1/response")
+@RequestMapping("/api/v1/responses")
 public class ResponseController {
 
     private static final Logger log = LoggerFactory.getLogger(ResponseController.class);
@@ -60,23 +60,32 @@ public class ResponseController {
     @Operation(summary = "Incident updates", description = "Incident updates")
     @ApiResponse(responseCode = "200", description = "Incident updated successfully")
     @ApiResponse(responseCode = "500", description = "Error handling Incident")
-    @PutMapping("/")
-    public ResponseWrapper<String>  incidentAPI(final @RequestBody ResponseTeamDto responseTeamDto) throws InvalidInputException, UpdFailureException, Exception {
+    @PutMapping("/UpdateIncident/")
+    public ResponseWrapper<ResponseTeamDto>  incidentAPI(final @RequestBody ResponseTeamDto responseTeamDto) throws InvalidInputException, UpdFailureException, Exception {
          
-        return new ResponseWrapper<String>(responseService.handleIncident(responseTeamDto));
+        return new ResponseWrapper<ResponseTeamDto>(responseService.handleIncident(responseTeamDto));
          
     }
+ 
 
-    /*
-    @Operation(summary = "Update ResponseTeam", description = "Update ResponseTeam users")
+    @Operation(summary = "Add ResponseTeam", description = "Update ResponseTeam users+")
     @ApiResponse(responseCode = "200", description = "Response updated successfully")
     @ApiResponse(responseCode = "500", description = "Error updating Response")
-    @PutMapping("/")
-    public ResponseWrapper<ResponseTeamDto> updateResponse(final @RequestBody ResponseTeamDto responseTeamDto) {
-        return ResponseService.addmember(responseTeamDto);
-                 
+    @PutMapping("/attachMembers/")
+    public ResponseWrapper<ResponseTeamDto> attachMembers (final @RequestBody ResponseTeamDto responseTeamDto)  throws TeamNotFoundException {
+        return new ResponseWrapper<ResponseTeamDto>(responseService.attachMembers(responseTeamDto),"Member(s) changes successful");
+                
     }
-     */
+
+    @Operation(summary = "Remove ResponseTeam", description = "Update ResponseTeam user-s")
+    @ApiResponse(responseCode = "200", description = "Response updated successfully")
+    @ApiResponse(responseCode = "500", description = "Error updating Response")
+    @PutMapping("/detachMembers/")
+    public ResponseWrapper<ResponseTeamDto> detachMembers (final @RequestBody ResponseTeamDto responseTeamDto)  throws TeamNotFoundException {
+        return new ResponseWrapper<ResponseTeamDto>(responseService.detachMembers(responseTeamDto),"Member(s) changes successful");
+                
+    }
+     
     /*
     @Operation(summary = "Delete Response", description = "Delete Response by ResponseId")
     @ApiResponse(responseCode = "200", description = "Response deleted successfully")

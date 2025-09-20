@@ -24,15 +24,16 @@ public class InternalAuthFilter extends OncePerRequestFilter {
     
     private static final String[] PUBLIC_PATHS = {"/public", "/health", "/swagger-ui", "/v3/api-docs", "/actuator/prometheus"};
 
+    /*
     
     @Value("${gateway.internal-auth-secret}")
     private String expectedInternalAuthSecret;
     
-
+    */
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        final String internalAuthHeader = request.getHeader(INTERNAL_AUTH_HEADER);
+      //  final String internalAuthHeader = request.getHeader(INTERNAL_AUTH_HEADER);
         
         /* CHG-1 */
         /*

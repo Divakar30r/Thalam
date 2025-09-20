@@ -2,7 +2,9 @@ package org.kolmanfreecss.kfimapiincidentservice.application.services;
 
 import io.micrometer.observation.annotation.Observed;
 
+import org.kolmanfreecss.kfimapiincidentservice.application.dto.IncidentCreateRequestDto;
 import org.kolmanfreecss.kfimapiincidentservice.application.dto.IncidentDto;
+import org.kolmanfreecss.kfimapiincidentservice.application.entity.Incident;
 import org.kolmanfreecss.kfimapiincidentservice.application.mappers.IncidentConverter;
 import org.kolmanfreecss.kfimapiincidentservice.application.ports.IncidentEventHandlerPort;
 import org.kolmanfreecss.kfimapiincidentservice.application.ports.IncidentRepositoryPort;
@@ -11,12 +13,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Timestamp;
 import java.util.List;
+import java.util.Optional;
 import java.util.Objects;
 
 /**
@@ -44,10 +50,40 @@ public class IncidentService {
         this.incidentConverter = incidentConverter;
     }
     
-    public Mono<IncidentDto> create(final IncidentDto incidentDto) {
+    private String IncString;
+   // (Long id, String incidentId, String title, String description, Status status, Priority priority, Date reportDate, Date resolutionDate)
+    
+   @Transactional
+    public Mono<IncidentDto> create(final IncidentCreateRequestDto Ip_incidentDto) {
+
+        System.out.println("Create from Service");
+        IncString   = "INC"+ new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date())+"000";
+        IncidentDto incidentDto = new IncidentDto(
+            null,
+             IncString
+            ,Ip_incidentDto.title()
+            ,Ip_incidentDto.description()
+            ,Ip_incidentDto.keydata()
+            ,Ip_incidentDto.complexitylevel()
+            ,Incident.Status.OPEN
+            ,Ip_incidentDto.priority()
+            ,new java.sql.Timestamp(System.currentTimeMillis())
+            ,(java.util.Date) null
+        );
+        System.out.println("Incident ID "+ IncString);
         return this.incidentRepositoryPort.create(this.incidentConverter.toEntity(incidentDto))
-                .flatMap(entity -> Mono.just(this.incidentConverter.toDto(entity)))
-                .doOnNext(dto -> Schedulers.parallel().schedule(() -> this.incidentEventHandlerPort.sendIncident(dto).subscribe()));
+                .flatMap(entity -> {
+                    
+                    IncString = "INC" +  new java.text.SimpleDateFormat("yyyyMMdd").format(new java.util.Date())  +  String.format("%03d", entity.getId());
+                    System.out.println("Incident flatamp "+ IncString);
+                    entity.setIncidentId(IncString);
+                    entity.setDescription(entity.getDescription().trim() + " " + IncString);
+                    entity.setTitle(entity.getTitle().trim()+ " "+ IncString);
+                    return this.incidentRepositoryPort.update(entity).then(Mono.just(this.incidentConverter.toDto(entity)));
+                })
+                
+                //.doOnNext(dto -> Schedulers.parallel().schedule(() -> this.incidentEventHandlerPort.sendIncident(dto).subscribe()));
+                .doOnNext(dto -> Schedulers.parallel().schedule(() -> this.incidentEventHandlerPort.sendIncidentToPartition(dto, "CRT", 0).subscribe()));
     }
     
     @Cacheable(value = "incidents", key = "#root.methodName")
@@ -71,7 +107,22 @@ public class IncidentService {
     }
     
     public Mono<Void> delete(final Long id) {
-        return this.incidentRepositoryPort.delete(id);
+         Mono<Optional<Incident>> incidentRecord =  this.incidentRepositoryPort.getById(id);
+         // set the incident.setStatus  as "closed" in incidentRecord and invoked update service
+            incidentRecord.subscribe(incident -> {
+                if(incident.isPresent()){
+                    Incident inc = incident.get();
+                    inc.setStatus(Incident.Status.CLOSED);
+                    inc.setResolutionDate(new Timestamp(System.currentTimeMillis()));
+                    this.incidentRepositoryPort.update(inc).subscribe();
+                    //this.incidentEventHandlerPort.sendIncidentToPartition(this.incidentConverter.toDto(inc), "DEL", 0).subscribe();
+                }
+            });
+
+            // return Mono<void> after updating the record
+            return Mono.fromRunnable(() -> {
+            }).then();
     }
+         
     
 }
