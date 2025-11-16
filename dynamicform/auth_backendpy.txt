@@ -1,0 +1,145 @@
+"""
+Simple Flask BFF for Keycloak-based sign-in and session checks.
+
+Environment variables (set in server env or .env for local run):
+- KEYCLOAK_BASE: e.g. https://keycloak.example.com
+- KEYCLOAK_REALM: e.g. OrderMgmt
+- KEYCLOAK_ORDMGMT_CLIENT_ID: e.g. ORDMGMT
+- KEYCLOAK_ORDMGMT_CLIENT_SECRET: optional (if client is confidential)
+- KEYCLOAK_DYNAMICFORM_CLIENT_ID: e.g. DYNAMICFORM
+
+This script is a starting point and is intentionally relaxed about
+JWT verification for local testing. For production, validate JWTs using
+Keycloak JWKS and verify signatures and token expiry.
+"""
+
+from flask import Flask, request, jsonify, make_response
+import os
+import requests
+import jwt
+import time
+
+app = Flask(__name__)
+
+KEYCLOAK_BASE = os.environ.get('KEYCLOAK_BASE', 'https://keycloak.example.com')
+REALM = os.environ.get('KEYCLOAK_REALM', 'OrderMgmt')
+ORDMGMT_CLIENT_ID = os.environ.get('KEYCLOAK_ORDMGMT_CLIENT_ID', 'ORDMGMT')
+ORDMGMT_CLIENT_SECRET = os.environ.get('KEYCLOAK_ORDMGMT_CLIENT_SECRET')
+DYNAMICFORM_CLIENT_ID = os.environ.get('KEYCLOAK_DYNAMICFORM_CLIENT_ID', 'DYNAMICFORM')
+
+TOKEN_URL = f"{KEYCLOAK_BASE}/realms/{REALM}/protocol/openid-connect/token"
+USERINFO_URL = f"{KEYCLOAK_BASE}/realms/{REALM}/protocol/openid-connect/userinfo"
+
+# Cookie name used by frontend
+AUTH_COOKIE = 'AUTH_SESSION'
+
+
+def decode_token_no_verify(token: str):
+    try:
+        # decode without signature verification (for local/dev). In prod use jwks.
+        return jwt.decode(token, options={"verify_signature": False, "verify_exp": False})
+    except Exception as e:
+        return None
+
+
+@app.route('/auth/login', methods=['POST'])
+def login():
+    data = request.json or {}
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'ok': False, 'message': 'username/password required'}), 400
+
+    # Use Resource Owner Password Credentials grant to obtain tokens (server-side)
+    payload = {
+        'grant_type': 'password',
+        'client_id': ORDMGMT_CLIENT_ID,
+        'username': username,
+        'password': password,
+    }
+    if ORDMGMT_CLIENT_SECRET:
+        payload['client_secret'] = ORDMGMT_CLIENT_SECRET
+
+    resp = requests.post(TOKEN_URL, data=payload)
+    if resp.status_code != 200:
+        return jsonify({'ok': False, 'message': 'authentication failed', 'detail': resp.text}), 401
+
+    token_data = resp.json()
+    access_token = token_data.get('access_token')
+    refresh_token = token_data.get('refresh_token')
+
+    # Optionally decode user info from token
+    claims = decode_token_no_verify(access_token) or {}
+    username_claim = claims.get('preferred_username') or claims.get('preferred_username') or claims.get('sub')
+    name = claims.get('name')
+
+    # Set HttpOnly cookie containing access token (short-lived) and refresh token if desired
+    response = make_response(jsonify({'ok': True, 'user': {'username': username_claim, 'name': name}}))
+    # For demo: store access token in cookie — HttpOnly to avoid JS access
+    response.set_cookie(AUTH_COOKIE, access_token, httponly=True, secure=False, samesite='Lax')
+    return response
+
+
+@app.route('/auth/me', methods=['GET'])
+def me():
+    token = request.cookies.get(AUTH_COOKIE)
+    if not token:
+        return jsonify({'error': 'not authenticated'}), 401
+    claims = decode_token_no_verify(token)
+    if not claims:
+        return jsonify({'error': 'invalid token'}), 401
+
+    # Build roles list from realm_access and resource_access
+    roles = []
+    realm_roles = claims.get('realm_access', {}).get('roles', [])
+    if realm_roles:
+        roles.extend(realm_roles)
+
+    resource_access = claims.get('resource_access', {}) or {}
+    # collect client roles from all clients
+    for client, info in resource_access.items():
+        client_roles = info.get('roles', [])
+        for r in client_roles:
+            # prefix client name to make unique: CLIENT:ROLE
+            roles.append(f"{client}:{r}")
+
+    user = {
+        'username': claims.get('preferred_username') or claims.get('sub'),
+        'name': claims.get('name'),
+        'roles': roles,
+    }
+    return jsonify({'user': user})
+
+
+@app.route('/auth/check-role', methods=['GET'])
+def check_role():
+    # query params: client, contains
+    client = request.args.get('client')
+    contains = request.args.get('contains')
+    token = request.cookies.get(AUTH_COOKIE)
+    if not token:
+        return jsonify({'ok': False, 'message': 'not authenticated'}), 401
+    claims = decode_token_no_verify(token)
+    if not claims:
+        return jsonify({'ok': False, 'message': 'invalid token'}), 401
+
+    resource_access = claims.get('resource_access', {}) or {}
+    client_roles = resource_access.get(client, {}).get('roles', []) if client else []
+
+    if contains:
+        ok = any(contains in r for r in client_roles)
+    else:
+        ok = len(client_roles) > 0
+
+    return jsonify({'ok': ok, 'client_roles': client_roles})
+
+
+@app.route('/auth/logout', methods=['POST'])
+def logout():
+    resp = make_response(jsonify({'ok': True}))
+    resp.set_cookie(AUTH_COOKIE, '', expires=0)
+    return resp
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8001, debug=True)
