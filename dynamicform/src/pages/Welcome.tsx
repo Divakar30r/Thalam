@@ -14,7 +14,7 @@ interface UserInfo {
   roles?: string[];
 }
 
-export const Welcome: React.FC<{ onOpenApp?: () => void }> = ({ onOpenApp }) => {
+export const Welcome: React.FC<{ onOpenApp?: () => void; onViewSubmittedOrders?: () => void }> = ({ onOpenApp, onViewSubmittedOrders }) => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,7 +84,10 @@ export const Welcome: React.FC<{ onOpenApp?: () => void }> = ({ onOpenApp }) => 
 
       <div className="mt-6 space-x-2">
         {hasRole('BUY') && (
-          <CreateEditButton onOpenApp={onOpenApp} />
+          <>
+            <CreateEditButton onOpenApp={onOpenApp} />
+            <ViewSubmittedOrdersButton onViewSubmittedOrders={onViewSubmittedOrders} />
+          </>
         )}
         {anyFormRole && (
           <button onClick={() => onOpenApp?.()} className="py-2 px-3 bg-indigo-600 text-white rounded">Open Dynamic Form</button>
@@ -115,7 +118,7 @@ const CreateEditButton: React.FC<{ onOpenApp?: () => void }> = ({ onOpenApp }) =
       const data = await resp.json();
       const roles: string[] = data.roles || [];
       const normalized = roles.map(r => String(r || '').toUpperCase());
-      const allowed = ['ORDER_EDIT', 'ORDER_PROPOSAL'];
+      const allowed = ['ORDER_EDIT'];
       // backend already indicates allowed, but double-check locally
       const ok = Boolean(data.allowed) || normalized.some(r => allowed.includes(r));
       if (ok) {
@@ -137,5 +140,32 @@ const CreateEditButton: React.FC<{ onOpenApp?: () => void }> = ({ onOpenApp }) =
       </button>
       {err && <div className="text-sm text-red-600 mt-2">{err}</div>}
     </>
+  );
+};
+
+// Button to view submitted orders
+const ViewSubmittedOrdersButton: React.FC<{ onViewSubmittedOrders?: () => void }> = ({ onViewSubmittedOrders }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      // Future: Add any permission checks or data fetching here if needed
+      onViewSubmittedOrders?.();
+    } catch (e: any) {
+      console.error('Error opening submitted orders:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className={`py-2 px-3 bg-blue-600 text-white rounded ${loading ? 'opacity-60 cursor-wait' : 'hover:bg-blue-700'}`}
+    >
+      {loading ? 'Loading...' : 'View Submitted Orders'}
+    </button>
   );
 };

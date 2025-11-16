@@ -345,6 +345,40 @@ class OrderReqService:
             raise DatabaseError(f"Failed to append note: {str(e)}")
 
     @staticmethod
+    async def add_interested_role(order_req_id: str, role: str) -> bool:
+        """Add a role string to Interested_Roles array for an OrderReq. No validation performed."""
+        try:
+            result = await OrderReq.get_motor_collection().update_one(
+                {"OrderReqID": order_req_id},
+                {"$addToSet": {"Interested_Roles": role}, "$set": {"updatedAt": datetime.utcnow()}}
+            )
+            if result.matched_count == 0:
+                raise NotFoundError(f"OrderReq {order_req_id} not found")
+            return True
+        except Exception as e:
+            if isinstance(e, NotFoundError):
+                raise
+            logger.error(f"Error adding Interested_Roles for {order_req_id}: {str(e)}")
+            raise DatabaseError(f"Failed to add Interested_Roles: {str(e)}")
+
+    @staticmethod
+    async def remove_interested_role(order_req_id: str, role: str) -> bool:
+        """Remove a role string from Interested_Roles array for an OrderReq."""
+        try:
+            result = await OrderReq.get_motor_collection().update_one(
+                {"OrderReqID": order_req_id},
+                {"$pull": {"Interested_Roles": role}, "$set": {"updatedAt": datetime.utcnow()}}
+            )
+            if result.matched_count == 0:
+                raise NotFoundError(f"OrderReq {order_req_id} not found")
+            return True
+        except Exception as e:
+            if isinstance(e, NotFoundError):
+                raise
+            logger.error(f"Error removing Interested_Roles for {order_req_id}: {str(e)}")
+            raise DatabaseError(f"Failed to remove Interested_Roles: {str(e)}")
+
+    @staticmethod
     async def get_order_req_by_note_followup_id(followup_id: str) -> Optional[OrderReqResponse]:
         """Get OrderReq by Notes FollowUpID"""
         try:

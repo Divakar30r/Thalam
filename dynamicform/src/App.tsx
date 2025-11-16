@@ -1297,7 +1297,13 @@ const App = () => {
       )}
 
       {isAuthenticated === true && !showApp && (
-        <Welcome onOpenApp={() => setShowApp(true)} />
+        <Welcome
+          onOpenApp={() => setShowApp(true)}
+          onViewSubmittedOrders={() => {
+            // TODO: Implement view submitted orders logic
+            console.log('View Submitted Orders clicked - logic to be implemented');
+          }}
+        />
       )}
 
       {isAuthenticated === true && showApp && (
