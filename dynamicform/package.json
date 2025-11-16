@@ -1,0 +1,37 @@
+{
+  "name": "dynamicform",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config config/vite.config.ts",
+    "dev:auth": "tsx watch server/index.ts",
+    "start:auth": "tsx server/index.ts",
+    "build": "vite build --config config/vite.config.ts",
+    "build:auth": "tsc server/index.ts --outDir dist --module nodenext --moduleResolution nodenext",
+    "preview": "vite preview --config config/vite.config.ts"
+  },
+  "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "axios": "^1.12.2",
+    "cookie-parser": "^1.4.7",
+    "date-fns": "^4.1.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.4",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}
