@@ -1,0 +1,275 @@
+# Example GitLab CI/CD Deploy Stage for FastAPI Order Management
+# Add this to your existing .gitlab-ci.yml file
+
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_IMAGE_NAME: fastapi-order-management
+  APP_DIR: /home/ubuntu/fastapi-app
+
+# Optional: Build and push to GitLab Container Registry
+build_image:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA .
+    - docker build -t $CI_REGISTRY_IMAGE:latest .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
+  only:
+    - main
+    - develop
+
+# Deploy directly to EC2 (recommended for small deployments)
+deploy_to_ec2:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    # Install SSH client
+    - apk add --no-cache openssh-client bash
+    - eval $(ssh-agent -s)
+
+    # Add SSH private key (set as GitLab CI/CD variable)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+
+    # Create SSH directory and add known hosts
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+
+  script:
+    - |
+      ssh $EC2_USER@$EC2_HOST << 'ENDSSH'
+        set -e
+
+        echo "📦 Deploying FastAPI Order Management to EC2..."
+
+        # Navigate to application directory
+        cd $APP_DIR || exit 1
+
+        # Pull latest code
+        echo "🔄 Pulling latest code from Git..."
+        git fetch origin
+        git reset --hard origin/main
+
+        # Create production .env file from GitLab variables
+        echo "⚙️  Creating environment configuration..."
+        cat > .env << 'EOF'
+      APP_NAME=${APP_NAME:-dCent CP Order Management API}
+      APP_VERSION=${APP_VERSION:-1.0.0}
+      ENVIRONMENT=${ENVIRONMENT:-production}
+      DEBUG=${DEBUG:-false}
+      HOST=${HOST:-0.0.0.0}
+      PORT=${PORT:-8001}
+      HOST_PORT=${HOST_PORT:-8001}
+      RELOAD=${RELOAD:-false}
+      API_PREFIX=${API_PREFIX:-}
+      MONGODB_URL=${MONGODB_URL}
+      DATABASE_NAME=${DATABASE_NAME:-CP_OrderManagement}
+      MIN_POOL_SIZE=${MIN_POOL_SIZE:-10}
+      MAX_POOL_SIZE=${MAX_POOL_SIZE:-100}
+      MAX_IDLE_TIME_MS=${MAX_IDLE_TIME_MS:-30000}
+      CORS_ORIGINS=${CORS_ORIGINS}
+      CORS_CREDENTIALS=${CORS_CREDENTIALS:-true}
+      CORS_METHODS=${CORS_METHODS:-["GET","POST","PUT","DELETE","OPTIONS","PATCH","HEAD"]}
+      CORS_HEADERS=${CORS_HEADERS:-["*"]}
+      LOG_LEVEL=${LOG_LEVEL:-INFO}
+      EMAIL_DOMAIN=${EMAIL_DOMAIN:-@drworkplace.microsoft.com}
+      DEFAULT_PAGE_SIZE=${DEFAULT_PAGE_SIZE:-20}
+      MAX_PAGE_SIZE=${MAX_PAGE_SIZE:-100}
+      EOF
+
+        # Stop existing containers
+        echo "🛑 Stopping existing containers..."
+        docker-compose down || true
+
+        # Remove old images (optional, uncomment if needed)
+        # docker image prune -f
+
+        # Build and start new containers
+        echo "🚀 Building and starting new containers..."
+        docker-compose up -d --build
+
+        # Wait for container to be healthy
+        echo "⏳ Waiting for application to be healthy..."
+        sleep 10
+
+        # Check health
+        for i in {1..30}; do
+          if curl -f http://localhost:8001/health > /dev/null 2>&1; then
+            echo "✅ Application is healthy!"
+            break
+          fi
+          echo "Waiting for application to start... ($i/30)"
+          sleep 2
+        done
+
+        # Show logs
+        echo "📋 Recent logs:"
+        docker-compose logs --tail=50
+
+        # Show running containers
+        echo "🐳 Running containers:"
+        docker ps | grep fastapi
+
+        echo "✅ Deployment completed successfully!"
+      ENDSSH
+
+  only:
+    - main
+  when: manual  # Remove this line to auto-deploy on every commit to main
+  environment:
+    name: production
+    url: https://drapps.dev
+
+# Alternative: Deploy using pre-built image from registry
+deploy_with_registry:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client bash
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+
+  script:
+    - |
+      ssh $EC2_USER@$EC2_HOST << ENDSSH
+        set -e
+
+        echo "📦 Deploying from Container Registry..."
+
+        cd $APP_DIR || exit 1
+
+        # Login to GitLab Container Registry
+        echo "$CI_REGISTRY_PASSWORD" | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
+        # Pull latest image
+        docker pull $CI_REGISTRY_IMAGE:latest
+
+        # Create .env file (same as above)
+        # ... (copy .env creation from above)
+
+        # Update docker-compose to use registry image
+        cat > docker-compose.override.yml << 'EOFCOMPOSE'
+      version: '3.8'
+      services:
+        fastapi-app:
+          image: $CI_REGISTRY_IMAGE:latest
+      EOFCOMPOSE
+
+        # Deploy
+        docker-compose down || true
+        docker-compose up -d
+
+        # Health check
+        sleep 10
+        curl -f http://localhost:8001/health || exit 1
+
+        echo "✅ Deployment completed!"
+      ENDSSH
+  only:
+    - main
+  when: manual
+  environment:
+    name: production
+    url: https://drapps.dev
+
+# Rollback job (manual trigger)
+rollback:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client bash
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H $EC2_HOST >> ~/.ssh/known_hosts
+
+  script:
+    - |
+      ssh $EC2_USER@$EC2_HOST << 'ENDSSH'
+        set -e
+
+        echo "⏪ Rolling back deployment..."
+
+        cd $APP_DIR || exit 1
+
+        # Go back to previous commit
+        git reset --hard HEAD~1
+
+        # Rebuild and restart
+        docker-compose down
+        docker-compose up -d --build
+
+        # Health check
+        sleep 10
+        curl -f http://localhost:8001/health || exit 1
+
+        echo "✅ Rollback completed!"
+      ENDSSH
+  only:
+    - main
+  when: manual
+  environment:
+    name: production
+    url: https://drapps.dev
+
+# Health check job (can run on schedule)
+health_check:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl
+  script:
+    - echo "🏥 Checking application health..."
+    - curl -f https://drapps.dev/api/v1/health || exit 1
+    - echo "✅ Application is healthy!"
+  only:
+    - schedules
+    - web
+
+# Required GitLab CI/CD Variables (Settings > CI/CD > Variables):
+#
+# SSH & Server:
+# - SSH_PRIVATE_KEY (Protected, Masked) - Private key for SSH access to EC2
+# - EC2_HOST - EC2 instance IP or hostname
+# - EC2_USER - SSH user (e.g., ubuntu, ec2-user)
+#
+# Application:
+# - APP_NAME
+# - APP_VERSION
+# - ENVIRONMENT
+# - DEBUG
+#
+# Database:
+# - MONGODB_URL (Protected) - MongoDB connection string
+# - DATABASE_NAME
+#
+# CORS:
+# - CORS_ORIGINS - JSON array of allowed origins
+#
+# API Settings:
+# - API_PREFIX - API path prefix (default: "" for production)
+#
+# Optional:
+# - LOG_LEVEL
+# - MIN_POOL_SIZE
+# - MAX_POOL_SIZE
+# - EMAIL_DOMAIN
+#
+# For Container Registry deployment:
+# - CI_REGISTRY_USER (auto-provided by GitLab)
+# - CI_REGISTRY_PASSWORD (auto-provided by GitLab)
+# - CI_REGISTRY_IMAGE (auto-provided by GitLab)

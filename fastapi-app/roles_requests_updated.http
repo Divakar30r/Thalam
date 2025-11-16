@@ -1,0 +1,255 @@
+# RolesBase API Request Samples (Updated with Industry field)
+# Base URL: http://localhost:8001/api/v1
+
+###############################################################################
+# 1. CREATE Role
+###############################################################################
+
+### Create a Seller role (Industry is MANDATORY)
+POST http://localhost:8001/api/v1/roles/
+Content-Type: application/json
+
+{
+  "Type": "Seller",
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.5946, 12.9716]
+  },
+  "UserEmailID": "sb.user1@drworkplace.microsoft.com",
+  "Industry": "Biscuits"
+}
+
+### Create a Buyer role (Industry is optional)
+POST http://localhost:8001/api/v1/roles/
+Content-Type: application/json
+
+{
+  "Type": "Buyer",
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.6033, 12.9698]
+  },
+  "UserEmailID": "sb.user2@drworkplace.microsoft.com"
+}
+
+### Create a TerminalOwner role (Industry is optional)
+POST http://localhost:8001/api/v1/roles/
+Content-Type: application/json
+
+{
+  "Type": "TerminalOwner",
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.6100, 12.9800]
+  },
+  "UserEmailID": "sb.user3@drworkplace.microsoft.com"
+}
+
+### Create another Seller with different Industry
+POST http://localhost:8001/api/v1/roles/
+Content-Type: application/json
+
+{
+  "Type": "Seller",
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.5850, 12.9650]
+  },
+  "UserEmailID": "sb.user4@drworkplace.microsoft.com",
+  "Industry": "Food"
+}
+
+###############################################################################
+# 2. GET Roles by Type ✨ NEW
+###############################################################################
+
+### Get all Seller roles
+GET http://localhost:8001/api/v1/roles/Type/Seller
+
+### Get all Buyer roles
+GET http://localhost:8001/api/v1/roles/Type/Buyer
+
+### Get all TerminalOwner roles
+GET http://localhost:8001/api/v1/roles/Type/TerminalOwner
+
+###############################################################################
+# 3. GET Roles by Industry ✨ NEW
+###############################################################################
+
+### Get all roles in Biscuits industry
+GET http://localhost:8001/api/v1/roles/Industry/Biscuits
+
+### Get all roles in Food industry
+GET http://localhost:8001/api/v1/roles/Industry/Food
+
+### Get all roles in Pharma industry
+GET http://localhost:8001/api/v1/roles/Industry/Pharma
+
+###############################################################################
+# 4. GET Role by RoleID
+###############################################################################
+
+### Get role by RoleID (generated format: SEL_email or BUYER_email or TMN_email)
+GET http://localhost:8001/api/v1/roles/role-id/SEL_sb.user1
+
+###############################################################################
+# 5. GET Roles by User Email
+###############################################################################
+
+### Get all roles for a specific user
+GET http://localhost:8001/api/v1/roles/user/sb.user1@drworkplace.microsoft.com
+
+###############################################################################
+# 6. LIST Roles with Filters
+###############################################################################
+
+### List all roles with pagination
+GET http://localhost:8001/api/v1/roles/?skip=0&limit=20
+
+### List roles filtered by type
+GET http://localhost:8001/api/v1/roles/?role_type=Seller&skip=0&limit=20
+
+### List roles filtered by user email
+GET http://localhost:8001/api/v1/roles/?user_email=sb.user1@drworkplace.microsoft.com
+
+### List roles with location-based search (within 5000 meters)
+GET http://localhost:8001/api/v1/roles/?longitude=77.5946&latitude=12.9716&max_distance=5000
+
+###############################################################################
+# 7. UPDATE Role
+###############################################################################
+
+### Update role by RoleID - Update Industry
+PUT http://localhost:8001/api/v1/roles/role-id/SEL_sb.user1
+Content-Type: application/json
+
+{
+  "Industry": "Food & Beverages"
+}
+
+### Update role by RoleID - Update Location
+PUT http://localhost:8001/api/v1/roles/role-id/SEL_sb.user1
+Content-Type: application/json
+
+{
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.6000, 12.9750]
+  }
+}
+
+### Update role by RoleID - Update multiple fields
+PUT http://localhost:8001/api/v1/roles/role-id/SEL_sb.user1
+Content-Type: application/json
+
+{
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.6100, 12.9800]
+  },
+  "Industry": "Bakery"
+}
+
+### Partial update using PATCH
+PATCH http://localhost:8001/api/v1/roles/role-id/SEL_sb.user1
+Content-Type: application/json
+
+{
+  "Industry": "Premium Biscuits"
+}
+
+###############################################################################
+# 8. GET Role Statistics
+###############################################################################
+
+### Get total role count
+GET http://localhost:8001/api/v1/roles/stats/count
+
+### Get count by role type
+GET http://localhost:8001/api/v1/roles/stats/count?role_type=Seller
+
+###############################################################################
+# 9. VALIDATE Role ID Integrity
+###############################################################################
+
+### Validate multiple role IDs
+POST http://localhost:8001/api/v1/roles/validate-integrity
+Content-Type: application/json
+
+[
+  "SEL_sb.user1",
+  "BUYER_sb.user2",
+  "TMN_sb.user3",
+  "INVALID_ID"
+]
+
+###############################################################################
+# 10. DELETE Role
+###############################################################################
+
+### Delete a role by document ID
+DELETE http://localhost:8001/api/v1/roles/671abc123def456789012345
+
+###############################################################################
+# ERROR SCENARIOS (for testing validation)
+###############################################################################
+
+### Try to create Seller without Industry (should fail)
+POST http://localhost:8001/api/v1/roles/
+Content-Type: application/json
+
+{
+  "Type": "Seller",
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.5946, 12.9716]
+  },
+  "UserEmailID": "sb.user5@drworkplace.microsoft.com"
+}
+
+### Try to create role with invalid Type
+POST http://localhost:8001/api/v1/roles/
+Content-Type: application/json
+
+{
+  "Type": "InvalidType",
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.5946, 12.9716]
+  },
+  "UserEmailID": "sb.user1@drworkplace.microsoft.com"
+}
+
+### Try to create role with invalid email domain
+POST http://localhost:8001/api/v1/roles/
+Content-Type: application/json
+
+{
+  "Type": "Seller",
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.5946, 12.9716]
+  },
+  "UserEmailID": "invalid@gmail.com",
+  "Industry": "Biscuits"
+}
+
+### Try to create role for non-existent user
+POST http://localhost:8001/api/v1/roles/
+Content-Type: application/json
+
+{
+  "Type": "Seller",
+  "Location": {
+    "type": "Point",
+    "coordinates": [77.5946, 12.9716]
+  },
+  "UserEmailID": "nonexistent@drworkplace.microsoft.com",
+  "Industry": "Biscuits"
+}
+
+### Try to get non-existent role by Type
+GET http://localhost:8001/api/v1/roles/Type/NonExistentType
+
+### Try to get non-existent role by Industry
+GET http://localhost:8001/api/v1/roles/Industry/NonExistentIndustry

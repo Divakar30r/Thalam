@@ -1,0 +1,282 @@
+# OrderReq API Request Samples (Updated with SubmissionTime and Notes)
+# Base URL: http://localhost:8001/api/v1
+
+###############################################################################
+# 1. CREATE OrderReq
+###############################################################################
+
+### Create OrderReq with Draft status (no SubmissionTime, no Notes)
+POST http://localhost:8001/api/v1/order-req/
+Content-Type: application/json
+
+{
+  "RequestorEmailID": "sb.user1@drworkplace.microsoft.com",
+  "OrderReqStatus": "Draft",
+  "Industry": "Biscuits",
+  "Products": [
+    {
+      "ProductName": "Ragi with extra butter",
+      "ProductSeq": "1",
+      "Quantity": "1",
+      "factors": {
+        "Specifics": ["NoMaida", "GlutenFree"],
+        "Sugarlevel": "0-5%",
+        "flavour": "Wheat",
+        "Unit*": "Pack of 20"
+      }
+    }
+  ],
+  "DeliveryDate": "2025-10-28T00:00:00.000Z"
+}
+
+### Create OrderReq with Submitted status (includes SubmissionTime and Notes)
+POST http://localhost:8001/api/v1/order-req/
+Content-Type: application/json
+
+{
+  "RequestorEmailID": "sb.user1@drworkplace.microsoft.com",
+  "OrderReqStatus": "Submitted",
+  "Industry": "Biscuits",
+  "Products": [
+    {
+      "ProductName": "Ragi with extra butter",
+      "ProductSeq": "1",
+      "Quantity": "1",
+      "factors": {
+        "Specifics": ["NoMaida", "GlutenFree"],
+        "Sugarlevel": "0-5%",
+        "flavour": "Wheat",
+        "Unit*": "Pack of 20"
+      }
+    },
+    {
+      "ProductName": "Tiramisu",
+      "ProductSeq": "2",
+      "Quantity": "1",
+      "factors": {
+        "Specifics": ["Nuts"],
+        "Sugarlevel": "",
+        "flavour": "",
+        "Unit*": "Pack of 5"
+      }
+    }
+  ],
+  "DeliveryDate": "2025-10-28T00:00:00.000Z",
+  "SubmissionTime": "2025-10-28T00:00:00.000Z",
+  "Interested_Roles": [
+    "sb.user2@drworkplace.microsoft.com"
+  ],
+  "Notes": [
+    {
+      "FollowUpID": "F1-GENERATED",
+      "Audience": [
+        "PRP-1-SB1029436",
+        "PRP-2-SB1029436"
+      ],
+      "Content": {
+        "URLs": ["https://example.com/spec.pdf"],
+        "MessageType": "info",
+        "Message": "Please review the specifications"
+      },
+      "AddedTime": "2025-10-28T00:00:00.000Z"
+    }
+  ]
+}
+
+### Create OrderReq with multiple products
+POST http://localhost:8001/api/v1/order-req/
+Content-Type: application/json
+
+{
+  "RequestorEmailID": "sb.user2@drworkplace.microsoft.com",
+  "OrderReqStatus": "Active",
+  "Industry": "Food",
+  "Products": [
+    {
+      "ProductName": "Organic Rice",
+      "ProductSeq": "1",
+      "Quantity": "50 kg",
+      "factors": {
+        "Grade": "A",
+        "Origin": "Local"
+      }
+    },
+    {
+      "ProductName": "Wheat Flour",
+      "ProductSeq": "2",
+      "Quantity": "25 kg",
+      "factors": {
+        "Type": "Whole grain",
+        "Origin": "Imported"
+      }
+    }
+  ],
+  "DeliveryDate": "2025-11-05T00:00:00.000Z",
+  "SubmissionTime": "2025-10-27T10:30:00.000Z"
+}
+
+###############################################################################
+# 2. GET OrderReq by OrderReqID
+###############################################################################
+
+### Get OrderReq by OrderReqID
+GET http://localhost:8001/api/v1/order-req/SB1029436
+
+###############################################################################
+# 3. GET OrderReq by Notes FollowUpID
+###############################################################################
+
+### Get OrderReq by Notes[].FollowUpID
+GET http://localhost:8001/api/v1/order-req/note/F1-SB1029436
+
+###############################################################################
+# 4. GET OrderReqs by Audience (ProposalID)
+###############################################################################
+
+### Get all OrderReqs that have this ProposalID in their Notes[].Audience
+GET http://localhost:8001/api/v1/order-req/audience/PRP-1-SB1029436
+
+###############################################################################
+# 5. SEARCH OrderReqs by Requestor and Status
+###############################################################################
+
+### Search by requestor email and status
+GET http://localhost:8001/api/v1/order-req/search?requestor_email=sb.user1@drworkplace.microsoft.com&status=Draft
+
+### Search by requestor email only
+GET http://localhost:8001/api/v1/order-req/search?requestor_email=sb.user1@drworkplace.microsoft.com
+
+###############################################################################
+# 6. LIST OrderReqs with Pagination
+###############################################################################
+
+### List all OrderReqs (first page)
+GET http://localhost:8001/api/v1/order-req/?skip=0&limit=20
+
+### List OrderReqs (second page)
+GET http://localhost:8001/api/v1/order-req/?skip=20&limit=20
+
+###############################################################################
+# 7. UPDATE OrderReq
+###############################################################################
+
+### Update OrderReq status from Draft to Submitted (must include SubmissionTime)
+PUT http://localhost:8001/api/v1/order-req/SB1029436
+Content-Type: application/json
+
+{
+  "OrderReqStatus": "Submitted",
+  "SubmissionTime": "2025-10-27T15:00:00.000Z"
+}
+
+### Add Notes to an existing OrderReq (only allowed if not Draft)
+PUT http://localhost:8001/api/v1/order-req/SB1029436
+Content-Type: application/json
+
+{
+  "Notes": [
+    {
+      "FollowUpID": "F2-SB1029436",
+      "Audience": [
+        "PRP-3-SB1029436"
+      ],
+      "Content": {
+        "URLs": [],
+        "MessageType": "update",
+        "Message": "Updated specifications available"
+      },
+      "AddedTime": "2025-10-28T10:00:00.000Z"
+    }
+  ]
+}
+
+### Update Products and Interested_Roles
+PUT http://localhost:8001/api/v1/order-req/SB1029436
+Content-Type: application/json
+
+{
+  "Products": [
+    {
+      "ProductName": "Ragi with extra butter - Premium",
+      "ProductSeq": "1",
+      "Quantity": "2",
+      "factors": {
+        "Specifics": ["NoMaida", "GlutenFree", "Organic"],
+        "Sugarlevel": "0-3%",
+        "flavour": "Wheat",
+        "Unit*": "Pack of 25"
+      }
+    }
+  ],
+  "Interested_Roles": [
+    "sb.user2@drworkplace.microsoft.com",
+    "sb.user3@drworkplace.microsoft.com"
+  ]
+}
+
+###############################################################################
+# 8. DELETE OrderReq
+###############################################################################
+
+### Delete an OrderReq
+DELETE http://localhost:8001/api/v1/order-req/SB1029436
+
+###############################################################################
+# ERROR SCENARIOS (for testing validation)
+###############################################################################
+
+### Try to create Draft OrderReq with Notes (should fail)
+POST http://localhost:8001/api/v1/order-req/
+Content-Type: application/json
+
+{
+  "RequestorEmailID": "sb.user1@drworkplace.microsoft.com",
+  "OrderReqStatus": "Draft",
+  "Industry": "Food",
+  "Products": [
+    {
+      "ProductName": "Test Product",
+      "ProductSeq": "1",
+      "Quantity": "1",
+      "factors": {}
+    }
+  ],
+  "DeliveryDate": "2025-11-01T00:00:00.000Z",
+  "Notes": [
+    {
+      "FollowUpID": "F1-TEST",
+      "Audience": ["PRP-1-TEST"],
+      "Content": {
+        "URLs": [],
+        "MessageType": "",
+        "Message": "This should fail"
+      },
+      "AddedTime": "2025-10-27T00:00:00.000Z"
+    }
+  ]
+}
+
+### Try to create Submitted OrderReq without SubmissionTime (should fail)
+POST http://localhost:8001/api/v1/order-req/
+Content-Type: application/json
+
+{
+  "RequestorEmailID": "sb.user1@drworkplace.microsoft.com",
+  "OrderReqStatus": "Submitted",
+  "Industry": "Food",
+  "Products": [
+    {
+      "ProductName": "Test Product",
+      "ProductSeq": "1",
+      "Quantity": "1",
+      "factors": {}
+    }
+  ],
+  "DeliveryDate": "2025-11-01T00:00:00.000Z"
+}
+
+### Try to get non-existent FollowUpID
+GET http://localhost:8001/api/v1/order-req/note/F99-NONEXISTENT
+
+### Try to get by non-existent Audience ProposalID (returns empty array)
+GET http://localhost:8001/api/v1/order-req/audience/PRP-999-NONEXISTENT
