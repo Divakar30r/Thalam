@@ -1,0 +1,249 @@
+# OrderProposal API Request Samples
+# Base URL: http://localhost:8001/api/v1
+
+###############################################################################
+# 1. CREATE OrderProposal
+###############################################################################
+
+### Create a new OrderProposal
+POST http://localhost:8001/api/v1/order-proposal/
+Content-Type: application/json
+
+{
+  "OrderReqID": "SB1029436",
+  "ProposerEmailID": "sb.user1@drworkplace.microsoft.com",
+  "ProposalStatus": "Active",
+  "Industry": "Biscuits",
+  "Products": [
+    {
+      "ProductName": "Ragi with extra butter",
+      "ProductSeq": "1",
+      "Quantity": "1",
+      "factors": {
+        "Specifics": "",
+        "Sugarlevel": "Minimum 12%",
+        "flavour": "Wheat with 30% maida",
+        "Unit*": "Pack of 50"
+      },
+      "Price": 120.5,
+      "DeliveryDate": "2025-10-28T00:00:00.000Z"
+    }
+  ],
+  "TotalAmount": 120.5,
+  "DeliveryDate": "2025-10-28T00:00:00.000Z",
+  "Notes": [
+    {
+      "FollowUpID": "F1-PRP-1-SB1029436",
+      "Content": {
+        "URLs": [],
+        "MessageType": "info",
+        "Message": "Initial proposal submitted"
+      },
+      "AddedTime": "2025-10-28T00:00:00.000Z"
+    }
+  ],
+  "UserEdits": [
+    {
+      "FollowUpID": "F1-SB1029436",
+      "AddedTime": "2025-10-28T00:00:00.001Z"
+    }
+  ]
+}
+
+### Create OrderProposal without optional fields (Notes and UserEdits)
+POST http://localhost:8001/api/v1/order-proposal/
+Content-Type: application/json
+
+{
+  "OrderReqID": "SB1029436",
+  "ProposerEmailID": "sb.user2@drworkplace.microsoft.com",
+  "ProposalStatus": "Draft",
+  "Industry": "Food",
+  "Products": [
+    {
+      "ProductName": "Organic Rice",
+      "ProductSeq": "1",
+      "Quantity": "50",
+      "factors": {
+        "Grade": "A",
+        "Origin": "Local"
+      },
+      "Price": 2500.00,
+      "DeliveryDate": "2025-11-05T00:00:00.000Z"
+    }
+  ],
+  "TotalAmount": 2500.00,
+  "DeliveryDate": "2025-11-05T00:00:00.000Z"
+}
+
+###############################################################################
+# 2. GET OrderProposal by ProposalID
+###############################################################################
+
+### Get OrderProposal by ProposalID
+GET http://localhost:8001/api/v1/order-proposal/proposal/PRP-1-SB1029436
+
+###############################################################################
+# 3. GET OrderProposals by OrderReqID
+###############################################################################
+
+### Get all OrderProposals for a specific OrderReqID
+GET http://localhost:8001/api/v1/order-proposal/order/SB1029436
+
+###############################################################################
+# 4. GET OrderProposal by Notes FollowUpID
+###############################################################################
+
+### Get OrderProposal by Notes[].FollowUpID
+GET http://localhost:8001/api/v1/order-proposal/note/F1-PRP-1-SB1029436
+
+###############################################################################
+# 5. GET OrderProposal by UserEdits FollowUpID
+###############################################################################
+
+### Get OrderProposal by UserEdits[].FollowUpID
+GET http://localhost:8001/api/v1/order-proposal/useredit/F1-SB1029436
+
+###############################################################################
+# 6. LIST OrderProposals with Pagination
+###############################################################################
+
+### List all OrderProposals (first page, 20 items)
+GET http://localhost:8001/api/v1/order-proposal/?skip=0&limit=20
+
+### List OrderProposals (second page)
+GET http://localhost:8001/api/v1/order-proposal/?skip=20&limit=20
+
+### List OrderProposals (custom page size)
+GET http://localhost:8001/api/v1/order-proposal/?skip=0&limit=50
+
+###############################################################################
+# 7. UPDATE OrderProposal
+###############################################################################
+
+### Update OrderProposal status
+PUT http://localhost:8001/api/v1/order-proposal/PRP-1-SB1029436
+Content-Type: application/json
+
+{
+  "ProposalStatus": "Accepted"
+}
+
+### Update OrderProposal with multiple fields
+PUT http://localhost:8001/api/v1/order-proposal/PRP-1-SB1029436
+Content-Type: application/json
+
+{
+  "ProposalStatus": "In Review",
+  "TotalAmount": 150.75,
+  "Notes": [
+    {
+      "FollowUpID": "F2-PRP-1-SB1029436",
+      "Content": {
+        "URLs": ["https://example.com/doc1.pdf"],
+        "MessageType": "update",
+        "Message": "Price adjusted based on market conditions"
+      },
+      "AddedTime": "2025-10-29T10:30:00.000Z"
+    }
+  ]
+}
+
+### Update Products array
+PUT http://localhost:8001/api/v1/order-proposal/PRP-1-SB1029436
+Content-Type: application/json
+
+{
+  "Products": [
+    {
+      "ProductName": "Ragi with extra butter",
+      "ProductSeq": "1",
+      "Quantity": "2",
+      "factors": {
+        "Specifics": "Premium quality",
+        "Sugarlevel": "Minimum 15%",
+        "flavour": "Wheat with 30% maida",
+        "Unit*": "Pack of 50"
+      },
+      "Price": 130.00,
+      "DeliveryDate": "2025-10-28T00:00:00.000Z"
+    },
+    {
+      "ProductName": "Multigrain Biscuits",
+      "ProductSeq": "2",
+      "Quantity": "1",
+      "factors": {
+        "Specifics": "Sugar-free",
+        "Unit*": "Pack of 25"
+      },
+      "Price": 75.50,
+      "DeliveryDate": "2025-10-28T00:00:00.000Z"
+    }
+  ],
+  "TotalAmount": 205.50
+}
+
+###############################################################################
+# 8. DELETE OrderProposal
+###############################################################################
+
+### Delete an OrderProposal
+DELETE http://localhost:8001/api/v1/order-proposal/PRP-1-SB1029436
+
+###############################################################################
+# ERROR SCENARIOS (for testing validation)
+###############################################################################
+
+### Try to create OrderProposal with non-existent OrderReqID
+POST http://localhost:8001/api/v1/order-proposal/
+Content-Type: application/json
+
+{
+  "OrderReqID": "NONEXISTENT123",
+  "ProposerEmailID": "sb.user1@drworkplace.microsoft.com",
+  "ProposalStatus": "Active",
+  "Industry": "Food",
+  "Products": [
+    {
+      "ProductName": "Test Product",
+      "Price": 100.00,
+      "DeliveryDate": "2025-11-01T00:00:00.000Z"
+    }
+  ],
+  "TotalAmount": 100.00,
+  "DeliveryDate": "2025-11-01T00:00:00.000Z"
+}
+
+### Try to create OrderProposal with invalid email domain
+POST http://localhost:8001/api/v1/order-proposal/
+Content-Type: application/json
+
+{
+  "OrderReqID": "SB1029436",
+  "ProposerEmailID": "invalid@gmail.com",
+  "ProposalStatus": "Active",
+  "Industry": "Food",
+  "Products": [
+    {
+      "ProductName": "Test Product",
+      "Price": 100.00,
+      "DeliveryDate": "2025-11-01T00:00:00.000Z"
+    }
+  ],
+  "TotalAmount": 100.00,
+  "DeliveryDate": "2025-11-01T00:00:00.000Z"
+}
+
+### Try to get non-existent ProposalID
+GET http://localhost:8001/api/v1/order-proposal/proposal/NONEXISTENT
+
+### Try to update non-existent ProposalID
+PUT http://localhost:8001/api/v1/order-proposal/NONEXISTENT
+Content-Type: application/json
+
+{
+  "ProposalStatus": "Accepted"
+}
+
+### Try to delete non-existent ProposalID
+DELETE http://localhost:8001/api/v1/order-proposal/NONEXISTENT

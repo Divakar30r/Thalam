@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  fastapi-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fastapi-order-management
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8001}:8001"
+    environment:
+      # Application settings
+      APP_NAME: ${APP_NAME:-dCent CP Order Management API}
+      APP_VERSION: ${APP_VERSION:-1.0.0}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+
+      # Server settings
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-8001}
+      RELOAD: ${RELOAD:-false}
+      API_PREFIX: ${API_PREFIX:-}
+
+      # Database settings
+      MONGODB_URL: ${MONGODB_URL}
+      DATABASE_NAME: ${DATABASE_NAME:-CP_OrderManagement}
+      MIN_POOL_SIZE: ${MIN_POOL_SIZE:-10}
+      MAX_POOL_SIZE: ${MAX_POOL_SIZE:-100}
+      MAX_IDLE_TIME_MS: ${MAX_IDLE_TIME_MS:-30000}
+
+      # CORS settings - Configure for your domain
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000","http://localhost:8000","http://localhost:8002"]}
+      CORS_CREDENTIALS: ${CORS_CREDENTIALS:-true}
+      CORS_METHODS: ${CORS_METHODS:-["GET","POST","PUT","DELETE","OPTIONS","PATCH","HEAD"]}
+      CORS_HEADERS: ${CORS_HEADERS:-["*"]}
+
+      # Logging settings
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+      # Validation settings
+      EMAIL_DOMAIN: ${EMAIL_DOMAIN:-@drworkplace.microsoft.com}
+
+      # Pagination settings
+      DEFAULT_PAGE_SIZE: ${DEFAULT_PAGE_SIZE:-20}
+      MAX_PAGE_SIZE: ${MAX_PAGE_SIZE:-100}
+
+    networks:
+      - app-network
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource limits (adjust based on your EC2 instance size)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  app-network:
+    driver: bridge
+    name: dcent-network

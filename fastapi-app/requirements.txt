@@ -1,0 +1,46 @@
+# FastAPI dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# MongoDB and ODM
+beanie==1.23.6
+motor==3.3.2
+pymongo==4.6.0
+
+# Data validation and serialization
+pydantic[email]==2.5.0
+
+# CORS middleware
+fastapi-cors==0.0.6
+
+# Environment management
+python-dotenv==1.0.0
+
+# HTTP client for testing
+httpx==0.25.2
+
+# Date and time utilities
+python-dateutil==2.8.2
+
+# Async utilities
+asyncio-throttle==1.0.2
+
+# Logging
+structlog==23.2.0
+
+# Validation utilities
+email-validator==2.1.0
+phonenumbers==8.13.26
+
+# Geographic utilities
+geojson==3.1.0
+shapely==2.0.2
+
+# Development and testing (optional)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+black==23.11.0
+flake8==6.1.0
+isort==5.12.0
+mypy==1.7.1
