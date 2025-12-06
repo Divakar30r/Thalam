@@ -1,0 +1,245 @@
+"""
+Django models for attachment and document metadata management
+"""
+
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
+
+# UserProfile is no longer needed - all user details are maintained in Keycloak IdP
+# User roles (BUY, SEL, etc.) are configured via Keycloak
+
+class DocumentMetadata(models.Model):
+    """Model for document metadata and S3 information"""
+    
+    # S3 and file information
+    s3_key = models.CharField(max_length=500, unique=True, db_index=True)
+    file_name = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=100)
+    file_size = models.BigIntegerField(null=True, blank=True)
+    checksum = models.CharField(max_length=64, null=True, blank=True)
+    
+    # User information
+    user_id = models.CharField(max_length=255, db_index=True)
+    
+    # Optional metadata
+    label = models.CharField(max_length=255, null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+    
+    # S3 and upload information  
+    bucket_name = models.CharField(max_length=255)
+    sse_algorithm = models.CharField(max_length=20, default='AES256')
+    upload_status = models.CharField(max_length=20, default='pending')
+    
+    # URLs
+    presigned_upload_url = models.URLField(null=True, blank=True)
+    public_url = models.URLField(null=True, blank=True)
+    public_url_expiry = models.DateTimeField(null=True, blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    uploaded_at = models.DateTimeField(null=True, blank=True)
+    
+    # Additional metadata
+    additional_metadata = models.JSONField(default=dict, blank=True)
+    
+    # Foreign key to order request (from dbHandling) - COMMENTED OUT
+    # No internal cascading operations needed - using external APIs
+    # order_request = models.ForeignKey(
+    #     'dbHandling.OrderRequest', 
+    #     on_delete=models.CASCADE, 
+    #     related_name='documents',
+    #     null=True, 
+    #     blank=True
+    # )
+    
+    class Meta:
+        ordering = ['-created_at']
+        # Commented out - no internal DB table needed, using external APIs
+        # db_table = 'document_metadata'
+    
+    def __str__(self):
+        return f"{self.file_name} ({self.s3_key})"
+    
+    def is_upload_completed(self) -> bool:
+        """Check if upload is completed"""
+        return self.upload_status == 'completed'
+    
+    def mark_upload_completed(self):
+        """Mark the document as successfully uploaded"""
+        self.upload_status = 'completed'
+        self.uploaded_at = timezone.now()
+        self.save(update_fields=['upload_status', 'uploaded_at'])
+    
+    def mark_upload_failed(self):
+        """Mark the document upload as failed"""
+        self.upload_status = 'failed'
+        self.save(update_fields=['upload_status'])
+    
+    def to_document_object_dict(self) -> dict:
+        """Convert to DocumentObject dictionary format"""
+        return {
+            's3_key': self.s3_key,
+            'file_name': self.file_name,
+            'content_type': self.content_type,
+            'file_size': self.file_size,
+            'checksum': self.checksum,
+            'user_id': self.user_id,
+            'label': self.label,
+            'notes': self.notes,
+            'bucket_name': self.bucket_name,
+            'sse_algorithm': self.sse_algorithm,
+            'upload_status': self.upload_status,
+            'presigned_upload_url': self.presigned_upload_url,
+            'public_url': self.public_url,
+            'public_url_expiry': self.public_url_expiry.isoformat() if self.public_url_expiry else None,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'uploaded_at': self.uploaded_at.isoformat() if self.uploaded_at else None,
+            'additional_metadata': self.additional_metadata
+        }
+    
+    def handle_document_access_exception(self, user_id: str, exception_type: str, 
+                                       error_message: str, **kwargs):
+        """
+        Handle document access exceptions by sending to Kafka and logging
+        
+        Args:
+            user_id: User ID who attempted the access
+            exception_type: Type of exception (e.g., 'access_denied', 'file_not_found', 'upload_failed')
+            error_message: Human readable error message
+            **kwargs: Additional context (ip_address, session_id, user_agent, etc.)
+        """
+        try:
+            from kafka.exceptions import send_document_access_exception
+            
+            # Send exception to Kafka topic 'DocumentExceptions'
+            exception_data = {
+                'order_req_id': self.order_request.order_req_id if self.order_request else None,
+                's3_key': self.s3_key,
+                'file_name': self.file_name,
+                'user_id': user_id,
+                'exception_type': exception_type,
+                'error_message': error_message,
+                'timestamp': timezone.now().isoformat(),
+                **kwargs
+            }
+            
+            send_document_access_exception(exception_data)
+            logger.info(f"Sent document access exception to Kafka: {exception_type}")
+            
+        except Exception as e:
+            logger.error(f"Failed to send document access exception to Kafka: {e}")
+
+
+# DocumentObject moved to dbHandling/order_requests_service.py
+# It belongs with OrderRequest operations since it's used as embedded documents
+        """Initialize document object with provided data"""
+        # Primary identifiers
+        self.s3_key = kwargs.get('s3_key', '')
+        
+        # File information
+        self.file_name = kwargs.get('file_name', '')
+        self.content_type = kwargs.get('content_type', '')
+        self.file_size = kwargs.get('file_size')
+        self.checksum = kwargs.get('checksum')
+        
+        # User information
+        self.user_id = kwargs.get('user_id', '')
+        
+        # Optional metadata
+        self.label = kwargs.get('label')
+        self.notes = kwargs.get('notes')
+        
+        # S3 and upload information
+        self.bucket_name = kwargs.get('bucket_name', '')
+        self.sse_algorithm = kwargs.get('sse_algorithm', 'AES256')
+        self.upload_status = kwargs.get('upload_status', 'pending')
+        
+        # URLs
+        self.presigned_upload_url = kwargs.get('presigned_upload_url')
+        self.public_url = kwargs.get('public_url')
+        self.public_url_expiry = kwargs.get('public_url_expiry')
+        
+        # Timestamps (as ISO strings for MongoDB)
+        self.created_at = kwargs.get('created_at', timezone.now().isoformat())
+        self.updated_at = kwargs.get('updated_at', timezone.now().isoformat())
+        self.uploaded_at = kwargs.get('uploaded_at')
+        
+        # Additional metadata
+        self.additional_metadata = kwargs.get('additional_metadata', {})
+    
+    def to_dict(self) -> dict:
+        """Convert document object to dictionary for MongoDB storage"""
+        return {
+            's3_key': self.s3_key,
+            'file_name': self.file_name,
+            'content_type': self.content_type,
+            'file_size': self.file_size,
+            'checksum': self.checksum,
+            'user_id': self.user_id,
+            'label': self.label,
+            'notes': self.notes,
+            'bucket_name': self.bucket_name,
+            'sse_algorithm': self.sse_algorithm,
+            'upload_status': self.upload_status,
+            'presigned_upload_url': self.presigned_upload_url,
+            'public_url': self.public_url,
+            'public_url_expiry': self.public_url_expiry,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at,
+            'uploaded_at': self.uploaded_at,
+            'additional_metadata': self.additional_metadata
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict):
+        """Create DocumentObject from dictionary"""
+        return cls(**data)
+    
+    def mark_upload_completed(self):
+        """Mark the document as successfully uploaded"""
+        self.upload_status = 'completed'
+        self.uploaded_at = timezone.now().isoformat()
+        self.updated_at = timezone.now().isoformat()
+    
+    def mark_upload_failed(self):
+        """Mark the document upload as failed"""
+        self.upload_status = 'failed'
+        self.updated_at = timezone.now().isoformat()
+    
+    def is_upload_completed(self) -> bool:
+        """Check if upload is completed"""
+        return self.upload_status == 'completed'
+    
+    def get_metadata_for_fastpay(self) -> dict:
+        """Get metadata formatted for FastPay API"""
+        return {
+            'fileName': self.file_name,
+            'contentType': self.content_type,
+            'fileSize': self.file_size,
+            's3Key': self.s3_key,
+            'checksum': self.checksum,
+            'userId': self.user_id,
+            'label': self.label,
+            'notes': self.notes,
+            'uploadedAt': self.uploaded_at,
+            'bucketName': self.bucket_name,
+            'publicUrl': self.public_url,
+            'uploadStatus': self.upload_status
+        }
+
+# Document orders are now maintained in a separate CRUD app
+# This app will POST document orders to /api/v1/document-orders/ endpoint
+# See sql/document_orders_ddl.sql for PostgreSQL table structure
+
+# Deprecated access logs - replaced by external document-orders API
+class DocumentAccessLog(models.Model):
+    """
+    [DEPRECATED] Use external document-orders API instead
+    """
+    pass

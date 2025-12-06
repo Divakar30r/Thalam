@@ -1,0 +1,29 @@
+Endpoints
+
+PresignedUploadView
+ - required for interactive and batch
+
+PublicUrlView
+ - required for interactive and batch
+
+UploadCompleteView
+ - required for interactive and batch
+ - this is probably renamed as DocumentStatusView
+ - Front end and GBot should call these to get the upload status 
+
+
+
+UpdateOrderDocumentsView, 
+ - Missing, probably removed in correction as this also seems to be DB based operation
+
+
+DocumentMetadataView,
+- Need to create the DocumentMetadata again, as it was replaced with DB related class due to lack of Django knowledge
+- used in other views
+
+OrderRequestView (not required as this is a db operation)
+
+DocumentListView
+- get Doc count stats based on filters
+
+ 

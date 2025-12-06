@@ -1,0 +1,280 @@
+"""
+Django admin interface for attachment management
+"""
+
+from django.contrib import admin
+from django.utils.html import format_html
+from django.urls import reverse
+from django.utils.safestring import mark_safe
+from .models import DocumentMetadata, OrderRequest, DocumentAccessLog
+
+@admin.register(OrderRequest)
+class OrderRequestAdmin(admin.ModelAdmin):
+    """Admin interface for OrderRequest model"""
+    
+    list_display = [
+        'order_req_id',
+        'user_id', 
+        'status',
+        'document_count',
+        'created_at',
+        'updated_at'
+    ]
+    
+    list_filter = [
+        'status',
+        'created_at',
+        'updated_at'
+    ]
+    
+    search_fields = [
+        'order_req_id',
+        'user_id'
+    ]
+    
+    readonly_fields = [
+        'order_req_id',
+        'created_at',
+        'updated_at',
+        'document_count'
+    ]
+    
+    def document_count(self, obj):
+        """Show number of documents for this order"""
+        return obj.documents.count()
+    document_count.short_description = 'Documents'
+    
+    def get_queryset(self, request):
+        """Optimize queryset with prefetch"""
+        return super().get_queryset(request).prefetch_related('documents')
+
+@admin.register(DocumentMetadata)
+class DocumentMetadataAdmin(admin.ModelAdmin):
+    """Admin interface for DocumentMetadata model"""
+    
+    list_display = [
+        'file_name',
+        'user_id',
+        'order_request_link',
+        'upload_status',
+        'file_size_display',
+        'content_type',
+        'created_at',
+        'public_url_status'
+    ]
+    
+    list_filter = [
+        'upload_status',
+        'content_type',
+        'created_at',
+        'sse_algorithm'
+    ]
+    
+    search_fields = [
+        'file_name',
+        'user_id',
+        's3_key',
+        'order_request__order_req_id'
+    ]
+    
+    readonly_fields = [
+        's3_key',
+        'created_at',
+        'updated_at',
+        'presigned_upload_url',
+        'public_url',
+        'public_url_expiry',
+        'file_size_display',
+        'checksum_display',
+        'additional_metadata_display'
+    ]
+    
+    fieldsets = [
+        ('Basic Information', {
+            'fields': [
+                'file_name',
+                'content_type',
+                'file_size_display',
+                'checksum_display'
+            ]
+        }),
+        ('User & Order', {
+            'fields': [
+                'user_id',
+                'order_request'
+            ]
+        }),
+        ('S3 Storage', {
+            'fields': [
+                's3_key',
+                'bucket_name',
+                'sse_algorithm',
+                'additional_metadata_display'
+            ]
+        }),
+        ('Upload Management', {
+            'fields': [
+                'upload_status',
+                'presigned_upload_url'
+            ]
+        }),
+        ('Public Access', {
+            'fields': [
+                'public_url',
+                'public_url_expiry'
+            ]
+        }),
+        ('Document Details', {
+            'fields': [
+                'label',
+                'notes'
+            ]
+        }),
+        ('Timestamps', {
+            'fields': [
+                'created_at',
+                'updated_at'
+            ]
+        })
+    ]
+    
+    def order_request_link(self, obj):
+        """Link to related order request"""
+        if obj.order_request:
+            url = reverse('admin:attachments_orderrequest_change', args=[obj.order_request.pk])
+            return format_html('<a href="{}">{}</a>', url, obj.order_request.order_req_id)
+        return '-'
+    order_request_link.short_description = 'Order Request'
+    
+    def file_size_display(self, obj):
+        """Display file size in human readable format"""
+        if not obj.file_size:
+            return '-'
+        
+        size = obj.file_size
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size < 1024:
+                return f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{size:.1f} TB"
+    file_size_display.short_description = 'File Size'
+    
+    def public_url_status(self, obj):
+        """Show public URL status"""
+        if obj.public_url:
+            if obj.is_public_url_valid():
+                return format_html('<span style="color: green;">✓ Active</span>')
+            else:
+                return format_html('<span style="color: orange;">⚠ Expired</span>')
+        return format_html('<span style="color: gray;">- None</span>')
+    public_url_status.short_description = 'Public URL'
+    
+    def checksum_display(self, obj):
+        """Display checksum in shortened format"""
+        if obj.checksum:
+            return f"{obj.checksum[:16]}..."
+        return '-'
+    checksum_display.short_description = 'Checksum'
+    
+    def additional_metadata_display(self, obj):
+        """Display additional metadata as formatted JSON"""
+        if obj.additional_metadata:
+            import json
+            try:
+                formatted = json.dumps(obj.additional_metadata, indent=2)
+                return format_html('<pre>{}</pre>', formatted)
+            except:
+                return str(obj.additional_metadata)
+        return '-'
+    additional_metadata_display.short_description = 'Additional Metadata'
+    
+    def get_queryset(self, request):
+        """Optimize queryset with select_related"""
+        return super().get_queryset(request).select_related('order_request')
+    
+    actions = ['mark_upload_completed', 'mark_upload_failed', 'regenerate_public_urls']
+    
+    def mark_upload_completed(self, request, queryset):
+        """Mark selected documents as upload completed"""
+        updated = queryset.update(upload_status='completed')
+        self.message_user(request, f'{updated} documents marked as upload completed.')
+    mark_upload_completed.short_description = 'Mark upload as completed'
+    
+    def mark_upload_failed(self, request, queryset):
+        """Mark selected documents as upload failed"""
+        updated = queryset.update(upload_status='failed')
+        self.message_user(request, f'{updated} documents marked as upload failed.')
+    mark_upload_failed.short_description = 'Mark upload as failed'
+    
+    def regenerate_public_urls(self, request, queryset):
+        """Regenerate public URLs for selected documents"""
+        from .document_handler import document_handler
+        
+        count = 0
+        for document in queryset.filter(upload_status='completed'):
+            try:
+                document_handler.generate_public_url(document.s3_key)
+                count += 1
+            except Exception:
+                pass
+        
+        self.message_user(request, f'Regenerated public URLs for {count} documents.')
+    regenerate_public_urls.short_description = 'Regenerate public URLs'
+
+@admin.register(DocumentAccessLog)
+class DocumentAccessLogAdmin(admin.ModelAdmin):
+    """Admin interface for DocumentAccessLog model"""
+    
+    list_display = [
+        'document_link',
+        'user_id',
+        'access_type',
+        'ip_address',
+        'user_agent_short',
+        'accessed_at'
+    ]
+    
+    list_filter = [
+        'access_type',
+        'accessed_at'
+    ]
+    
+    search_fields = [
+        'document__file_name',
+        'user_id',
+        'ip_address'
+    ]
+    
+    readonly_fields = [
+        'document',
+        'user_id',
+        'access_type',
+        'ip_address',
+        'user_agent',
+        'accessed_at'
+    ]
+    
+    def document_link(self, obj):
+        """Link to related document"""
+        url = reverse('admin:attachments_documentmetadata_change', args=[obj.document.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.document.file_name)
+    document_link.short_description = 'Document'
+    
+    def user_agent_short(self, obj):
+        """Display shortened user agent"""
+        if obj.user_agent:
+            return obj.user_agent[:50] + '...' if len(obj.user_agent) > 50 else obj.user_agent
+        return '-'
+    user_agent_short.short_description = 'User Agent'
+    
+    def get_queryset(self, request):
+        """Optimize queryset with select_related"""
+        return super().get_queryset(request).select_related('document')
+    
+    def has_add_permission(self, request):
+        """Disable manual creation of access logs"""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Make access logs read-only"""
+        return False

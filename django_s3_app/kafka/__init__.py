@@ -1,0 +1,3 @@
+"""
+Kafka package initialization
+"""
