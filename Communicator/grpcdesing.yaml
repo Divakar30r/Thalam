@@ -1,0 +1,297 @@
+Two Applications named: 'Requestor' & 'Processor'
+
+Purpose:
+ Demonstrate gRPC server streaming between Requestor and Processor app using python  (grpcio / grpclib ) and REST for HTTP requests for outside communications of these app
+
+ ---------------------------------------------------------------------------------------------------------------------------------
+ App "Requestor"
+
+ 
+    Python app - Django REST calls - gRPC using grpcio
+
+    Variables:
+    - OrderReqIDList: List of OrderReqObj
+    - OrderReqObj:{"OrderReqID":"", "Session":"",  "NotesDictArr":[NotesDictObj], "Queuename":[Blocking queue on concurrent gRPC],"expiry":Time_in_ms}
+    - NotesDictObj - {"FollowUpID": "", "Audience":[], "content":{ "URLs":[], "MessageType":"", "Message":""} }
+
+  Method: _UpdateRequests
+    parameter: OrderReqIDList[] object
+     
+      if mode = "RequestSubmissions"
+               /PUT $API_BASE_URL/api/v1/order-req based on OrderReqIDList[].OrderReqID and update status as 'SUBMITTED'
+
+      if mode = "RequestFollowUp"
+               /PUT $API_BASE_URL/api/v1/order-req , insert new follow Up as  Notes Object with Notes:{ "FollowUp ID": OrderReqID+"-"+currenttimestamp in ms, "Audience": request.Message.Audience, "Message": request.Message.content} under the order-req-id record
+                    "Notes": [
+                              {
+                              "FollowUpID": "" , // Do not send this in PUT request ... but refresh NotesDictObj from the  request.
+                              "Audience": [  "PRP-1-SB1029436", "PRP-2-SB1029436" ],
+                              "Content": { "URLs": [], "MessageType": "", "Message": ""},
+                              "AddedTime": { "$date": "2025-10-28T00:00:00.000Z"}
+                            ]
+
+      if mode = "OrderFinalised"
+               /PUT $API_BASE_URL/api/v1/order-proposal based on OrderReqIDList[].OrderReqID and update status as 'FINALISED'
+      if mode = "OrderPaused"
+               /PUT $API_BASE_URL/api/v1/order-proposal based on OrderReqIDList[].OrderReqID and update status as 'PAUSED'
+
+      - if unable to update ,   message through AWS MSK topic 'REQ_failures' with message :{"OrderReqID" "",   Session:Session ID, message:"Order Update failure"} with 
+            -  key:"ORD_SUBMISSION"  for modes("RequestSubmissions")
+            -  key:"ORD_UPDATES" for modes("RequestFollowUp","OrderFinalised","OrderPaused")
+
+
+
+  Host REST "POST" call to receive 'Initiate'
+
+  Request:
+   OrderReqId - string
+   SessionID - string
+   Notification type - string
+
+   Logic:
+    1) invoke _UpdateRequests (mode = "RequestSubmissions")
+       Send  AWS MSK topic 'BUYER_ACKNOWLEDGEMENTS' with message :{"OrderReqID" "",  , Session:Session ID, message:"Order Submitted"} 
+       if unable to update ,   message through AWS MSK topic 'REQ_failures' with message :{"OrderReqID" "",  , Session:Session ID, message:"Order Submission failure"} and key:"ORD_SUBMISSION" 
+
+    2) trigger gRPC_SS in concurrent mode with request.OrderReqID and request.NotificationType as received in the POST call
+
+    
+  
+  gRPC server steaming proto buf - named 'gRPC_SS'  - running on async mode (to keep other functions active) and concurrency ( to handle parallel gRPC_SS)
+     Request:
+     OrderReqID
+     NotificationType
+
+    Logic:
+      this is triggered from /POST Initiate
+
+      Response template (in 'Processor' app)
+        OrderreqId
+        StreamingResponseStatus
+        ProposalId
+        FollowUpID
+
+    
+    1) Process the responses in a for loop
+        - if Response.StreamingResponseStatus = "NewProposal"
+              message through AWS MSK topic 'BUYER_NOTIFY' with message :{"OrderReqID" "",  , Session:Session ID, message:"New Proposal received"} with key "ORD_UPDATES"
+        - if Response.StreamingResponseStatus = "ProposalClosed"
+              message through AWS MSK topic 'BUYER_NOTIFY' with message :{"OrderReqID" "",  , Session:Session ID, message:" Proposal closed" + response.ProposalID} with key "ORD_UPDATES"
+        - if Response.StreamingResponseStatus = "PropsalUpdate"
+              message through AWS MSK topic 'BUYER_NOTIFY' with message :{"OrderReqID" "",  , Session:Session ID, message:" Proposal updates" + response.ProposalID} with key "ORD_UPDATES"
+        - if Response.StreamingResponseStatus = "OrderPaused"
+              message through AWS MSK topic 'BUYER_NOTIFY' with message :{"OrderReqID" "",  , Session:Session ID, message:" Choose one proposal" + response.ProposalID} with key "ORD_UPDATES"
+        - if Response.StreamingResponseStatus = "EditLock"
+              message through AWS MSK topic 'BUYER_NOTIFY' with message :{"OrderReqID" "",  , Session:Session ID, message:" Propsal updates in progress" + response.ProposalID} with key "ORD_UPDATES"
+
+ 
+  Host REST "POST" call to receive 'FollowUp'
+    Request:
+      OrderReqID - string
+      Audience -  List of string
+      Message -  Object with a serializer - {"content" : {"URLs":[], "MessageType":"", "Message":""} }
+
+    Logic
+    1) Invoke _UpdateRequests (mode= RequestFollowUp) 
+
+    2) Update the tracking service if order exists
+   
+    3) Trigger gRPC_NS 
+      - OrderReqID - request.OrderReqID
+      - FollowUp ID: the ID stored under Notes object received as response from the /PUT call in _UpdateRequests method
+      - Message  - request.Message
+
+  gRPC no steaming proto buf - named 'gRPC_NS'
+     Request:
+      OrderReqID - string
+      Audience - List of string
+      FollowUpID - string
+      
+     
+    Logic:
+      Response template (in "Processor" app)
+        NS_FollowUpResp -  List of Objects with a serializer - {"Audience":  ProposalID , "Status" : "", "AddedTime":""}
+
+       1) Read the NS_FollowUpResp List whose Status is "Locked"
+          - Placeholder method for adding logic later
+
+   Configs
+    - API_BASE_URL: 
+    - AWS MSK: topic: BUYER_ACKNOWLEDGEMENTS(Key: ORD_SUBMISSION), BUYER_NOTIFY (key:  ORD_UPDATES), BUYER_FOLLOWUP (Key: ORD_UPDATES), REQ_FAILURES (key:ORD_SUBMISSION, ORD_UPDATES)
+
+    
+      ----------------------------------------------------------------------------------------------------------------------------------
+
+  "Processor"
+
+    Python app - Django REST calls - gRPC using grpcio
+
+    Variables:
+    - OrderReqIDList: List of OrderReqObj
+    - OrderReqObj:{"OrderReqID":"", "Session":"", "SellerDictArr":[SellerDictObj], "ProposalDictArr":[ProposalDictObj], "Queuename":[Blocking queue on concurrent gRPC],"expiry":Time_in_ms}
+    - SellerDictObj - with Keys {'SellerID':"",'Distance':""}
+    - ProposalDictObj - with Keys {'ProposalID':"",  'Price':"", 'DeliveryDate':"", 'NotesArr':[NotesDictObj]}
+    - NotesDictObj - with keys {"FollowUpID": "","content":{ "URLs":[], "MessageType":"", "Message":""} }
+
+    Method: _SelectSellers
+      - through /GET $API_BASE_URL/api/v1/order-req/{order-req-id} details get industry and buyer terminal location
+      - through /GET $API_BASE_URL/api/v1/....  details get sellers List based on that industry and seller terminal location 
+      - filter sellers based on terminal proximity with buyer terminal locations , invoke /GET $API_GOOGLE_BOT_URL/Distance to invoke 'Google Distance Matrix Api' hosted in GBOT Applications  and expect the response in Kms - prepare SellerDict with SellerID
+      - Update the OrderReqObj.SellersDict  with max of n entries(Config property: FIND_MAX_SEL) 
+
+  
+    Method: _NotifyGChat (message)
+    -  invoke GCHat endpoints to /GET $API_GOOGLE_CHAT_URL/Notify to invoke  notifications to sellers google account  with message
+    
+
+    Method: _UpdateProposals 
+    parameter: OrderReqIDList[].ProposalDictArr[]
+     
+      if mode = "ProposalSubmissions"
+               /PUT $API_BASE_URL/api/v1/order-proposal based on OrderReqIDList[].ProposalDictArr[].ProposalID and update status as 'SUBMITTED'
+
+      if mode = "ProposalUpdate"
+               /PUT $API_BASE_URL/api/v1/order-proposal , insert new follow Up as  Notes Object  
+                    "Notes": [
+                                {
+                                  "FollowUpID":"" // Don't send it in PUT request but later load it in ProposalDictArr[].ProposalID based on response
+                                  "Content": {
+                                    "URLs": [],
+                                    "MessageType": "",
+                                    "Message": ""
+                                  },
+                                  "AddedTime": { "$date": "2025-10-28T00:00:00.000Z"}
+                              ]
+
+      if mode = "ProposalClosed"
+               /PUT $API_BASE_URL/api/v1/order-proposal based on OrderReqIDList[].ProposalDictArr[].ProposalID and update status as 'CLOSED'
+      if mode = "OrderPaused"
+               /PUT $API_BASE_URL/api/v1/order-proposal based on OrderReqIDList[].ProposalDictArr[].ProposalID and update status as 'PAUSED'
+      if mode = "EditLock"
+              /PUT $API_BASE_URL/api/v1/order-proposal based on OrderReqIDList[].ProposalDictArr[].ProposalID and update status as 'EDITLOCK'
+      if mode = "ProposalLock"
+              /PUT $API_BASE_URL/api/v1/order-proposal based on OrderReqIDList[].ProposalDictArr[].ProposalID and update status as 'PROPOSALLOCK'
+      if mode = "UserEdits"
+               /PUT $API_BASE_URL/api/v1/order-proposal edit "UserEdits" object and add a new object with request.FollowUpID and AddedTime as curent time as below and return it in response
+                        "UserEdits": [{
+                              "FollowUpID": "F1-SB1029436",
+                              "AddedTime": {"$date": "2025-10-28T00:00:00.001Z"}
+                              }]
+
+
+      - if unable to update ,   message through AWS MSK topic 'REQ_failures' with message :{"OrderReqID" "",  , Session:Session ID, message:"Proposal Submission failure"} and key:"PRP_SUBMISSION" 
+
+
+
+    Host "POST" call to receive 'ProposalSubmissions'
+     Request:
+      OrderReqID
+      Seller:
+      ProposalDictObj:
+
+     Logic: invoke
+      1)Invoke _UpdateProposals (mode ="ProposalSubmissions")
+      2)Through AWS MSK topic 'SELLER_ACKNOWLEDGEMENTS' with message :{"OrderReqID" "",  , Session:Session ID, message:"Proposal Submitted"}    
+      3) Based on the OrderReqIDList[],  update the OrderReqIDList[].ProposalDictObj with request.ProposalDictObj
+      4) add the message to OrderReqIDList[].Queuename as  OrderReqIDList[].ProposalDictArr[].ProposalID + '/'+'New'
+      
+
+    
+    
+
+    gRPC server steaming proto buf - named 'gRPC_SS'
+     
+     Response:
+      OrderReqId
+      ProposalId
+      StreamingResponseStatus
+      FollowUpID
+
+    Logic:
+      1) Operations based on request 
+        add a new entry into OrderReqIDList just with OrderReqObj with request.OrderReqId , calculate and set the OrderReqIDList[].expiry as 30 mins from current time
+      2) Invoke _SelectSellers 
+      3) Invoke _NotifyGChat for each OrderReqIDList[].SellerDictArr if  request.NotificationType = 'GChat' with message = "OrderReqId"+OrderReqID + " recevied"
+      4) Through AWS MSK topic 'SELLER_NOTIFY' with message :{"OrderReqID" : OrderReqID , message:"Proposal Submitted"}  key:PRP_REQUEST
+
+      5) Awaiting responses
+          - OrderReqIDList[].Queuename based loop with timeout as OrderReqIDList[].expiry 
+          - Read from OrderReqIDList[].Queuename and split the message by '/' into two parts as QueueMessageHeader and QueueMessageCode
+          - if QueueMessageHeader has an ProposalID contained in OrderReqIDList[].ProposalDictArr
+           
+            - if QueueMessageCode = "New"
+                Response.StreamingResponseStatus = "NewProposal"
+                Response.ProposalID = QueueMessageHeader
+                Response.Message = None 
+                Response.FollowUpID = None
+            - if QueueMessageCode = "Closed"
+                Response.StreamingResponseStatus = "ProposalClosed"
+                Response.ProposalID = QueueMessageHeader
+                Response.Message = None 
+                Response.FollowUpID = None
+            - if QueueMessageCode = "EditLock"
+                Response.StreamingResponseStatus = "EditLock"
+                Response.ProposalID = QueueMessageHeader 
+                Response.FollowUpID = None
+
+          - if QueueMessageHeader has an ProposalID.FollowUpID contained in OrderReqIDList[].ProposalDictArr[].FollowUpID
+            - if QueueMessageCode = Update"
+                Response.StreamingResponseStatus = "ProposalUpdate"
+                Response.ProposalID = QueueMessageHeader 
+                Response.FollowUpID = OrderReqIDList[].ProposalDictArr[].FollowUpID
+
+
+          if the queue exceeds the expiry,
+            invoke _UpdateProposals (mode = OrderPaused')
+            Response.StreamingResponseStatus = "OrderPaused"
+
+
+ 
+    Host REST "POST" call to receive 'FollowUp'
+     Request:
+      OrderReqId
+      ProposalID
+      FollowUpID
+      Message -  {"URLs":[], "MessageType":"", "Message":""} 
+
+      Logic:
+        1) Update OrderReqIDList[].ProposalDictArr[].NotesDictObj.FollowUpID =  request.FollowUpID 
+         Update OrderReqIDList[].ProposalDictArr[].NotesDictObj.content =  request.Message
+        2) Invoke _UpdateProposals with mode = ProposalUpdate
+        3) Based on the OrderReqIDList[],  insert into OrderReqIDList[].ProposalDictArr[].NotesDictArr with NotesDictObj.FollowUpID = request.FollowUpID and NotesDictObj.content  = request.message
+        4) add the message to OrderReqIDList[].Queuename as  OrderReqIDList[].ProposalDictArr[].NotesDictArr[].FollowUpID + '/' + 'Update'
+
+
+    gRPC no steaming proto buf - named 'gRPC_NS'
+
+     Response:
+      NS_FollowUpResp -  List of Objects with a serializer - {"Audience":  ProposalID , "Status" : "", "AddedTime":""}
+
+    Logic:
+      - for each entry in request.Audience   
+          if /GET $API_BASE_URL/api/v1/order-proposal (Key with ProposalID) Status is 'EditLock'
+            Update NS_FollowUpResp[].Status = 'EditLock' and NS_FollowUpResp[].Audience = ProposalID
+          else _UpdateProposals(mode = "UserEdits") and if successful update NS_FollowUpResp[].AddedTime = mongo compatible currenttimestamp for the ProposalID
+
+
+    Configs
+      - API_BASE_URL: 
+      - API_GOOGLE_CHAT_URL:
+      - API_GOOGLE_BOT_URL:
+      - AWS MSK: topic: SELLER_ACKNOWLEDGEMENTS(Key: PRP_SUBMISSION), SELLER_NOTIFY (key:  PRP_UPDATES), SELLER_FOLLOWUP (Key: PRP_UPDATES), PRP_FAILURES (Key: PRP_SUBMISSION)
+
+    Host "POST" call to receive 'EditLock'
+     parameters:
+      OrderReqID: string 
+      ProposalID: string
+       
+     Logic: 
+      1)invoke _UpdateProposals(mode = "EditLock") with request.ProposalID
+      2) add the message to OrderReqIDList[].Queuename as  OrderReqIDList[].ProposalDictArr[].ProposalDictObj + '/' + 'EditLock'
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------
+    
+
+    

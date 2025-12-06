@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package order_service;
+
+// gRPC Streaming Service for Order Processing
+service OrderStreamingService {
+    // Server streaming RPC for order processing
+    rpc ProcessOrderStream(OrderStreamRequest) returns (stream OrderStreamResponse);
+}
+
+// gRPC Non-Streaming Service for Follow-ups
+service OrderNonStreamingService {
+    // Simple RPC for follow-up processing
+    rpc ProcessFollowUp(FollowUpRequest) returns (FollowUpResponse);
+}
+
+// Streaming Request Message
+message OrderStreamRequest {
+    string order_req_id = 1;
+    string notification_type = 2;
+}
+
+// Streaming Response Message
+message OrderStreamResponse {
+    string order_req_id = 1;
+    string streaming_response_status = 2;
+    string proposal_id = 3;
+    string follow_up_id = 4;
+}
+
+// Non-Streaming Follow-up Request
+message FollowUpRequest {
+    string order_req_id = 1;
+    repeated string audience = 2;
+    string order_follow_up_id = 3;
+    MessageContent message = 4;
+}
+
+// Non-Streaming Follow-up Response
+message FollowUpResponse {
+    repeated FollowUpResponseItem ns_follow_up_resp = 1;
+}
+
+message FollowUpResponseItem {
+    string audience = 1;  // ProposalID
+    string status = 2;
+    string added_time = 3;
+}
+
+// Message Content Structure
+message MessageContent {
+    repeated string urls = 1;
+    string message_type = 2;
+    string message = 3;
+}
