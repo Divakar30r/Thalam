@@ -1,0 +1,187 @@
+"""
+Configuration module for Django S3 App
+Handles AWS S3 and Keycloak settings from environment variables and config files
+"""
+
+import os
+import json
+from pathlib import Path
+from typing import Any, Dict, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+class Config:
+    """Configuration class that loads settings from environment variables and config files"""
+    
+    def __init__(self):
+        self.config_file_path = os.getenv('CONFIG_FILE_PATH', 'config.json')
+        self._file_config = self._load_config_file()
+        
+    def _load_config_file(self) -> Dict[str, Any]:
+        """Load configuration from JSON file if it exists"""
+        try:
+            if os.path.exists(self.config_file_path):
+                with open(self.config_file_path, 'r') as f:
+                    return json.load(f)
+            else:
+                logger.warning(f"Config file {self.config_file_path} not found. Using environment variables.")
+                return {}
+        except (json.JSONDecodeError, IOError) as e:
+            logger.error(f"Error loading config file {self.config_file_path}: {e}")
+            return {}
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Get configuration value by key
+        Priority: Environment variable > Config file > Default value
+        """
+        # First try environment variable
+        env_value = os.getenv(key)
+        if env_value is not None:
+            # Try to convert string values to appropriate types
+            return self._convert_type(env_value)
+        
+        # Then try config file
+        if key in self._file_config:
+            return self._file_config[key]
+        
+        # Finally use default
+        return default
+    
+    def _convert_type(self, value: str) -> Any:
+        """Convert string environment variables to appropriate Python types"""
+        if value.lower() in ('true', 'false'):
+            return value.lower() == 'true'
+        
+        if value.isdigit():
+            return int(value)
+        
+        # Try to parse as JSON for lists and dicts
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError:
+            return value
+
+    # AWS S3 Configuration
+    @property
+    def aws_access_key_id(self) -> str:
+        return self.get('AWS_ACCESS_KEY_ID', '')
+    
+    @property
+    def aws_secret_access_key(self) -> str:
+        return self.get('AWS_SECRET_ACCESS_KEY', '')
+    
+    @property
+    def aws_s3_region_name(self) -> str:
+        return self.get('AWS_S3_REGION_NAME', 'us-east-1')
+    
+    @property
+    def aws_s3_bucket_name(self) -> str:
+        return self.get('AWS_S3_BUCKET_NAME', '')
+    
+    @property
+    def aws_s3_sse_algorithm(self) -> str:
+        return self.get('AWS_S3_SSE_ALGORITHM', 'AES256')
+    
+    @property
+    def aws_s3_sse_kms_key_id(self) -> Optional[str]:
+        return self.get('AWS_S3_SSE_KMS_KEY_ID')
+    
+    @property
+    def aws_s3_presigned_url_expiry(self) -> int:
+        """Presigned URL expiry time in seconds (default: 1 hour)"""
+        return self.get('AWS_S3_PRESIGNED_URL_EXPIRY', 3600)
+    
+    @property
+    def aws_s3_public_url_expiry(self) -> int:
+        """Public URL expiry time in seconds (default: 24 hours)"""
+        return self.get('AWS_S3_PUBLIC_URL_EXPIRY', 86400)
+    
+    # Keycloak Configuration
+    @property
+    def keycloak_server_url(self) -> str:
+        return self.get('KEYCLOAK_SERVER_URL', '')
+    
+    @property
+    def keycloak_realm(self) -> str:
+        return self.get('KEYCLOAK_REALM', '')
+    
+    @property
+    def keycloak_client_id(self) -> str:
+        return self.get('KEYCLOAK_CLIENT_ID', '')
+    
+    @property
+    def keycloak_client_secret(self) -> str:
+        return self.get('KEYCLOAK_CLIENT_SECRET', '')
+    
+    @property
+    def keycloak_token_url(self) -> str:
+        base_url = self.keycloak_server_url.rstrip('/')
+        realm = self.keycloak_realm
+        return f"{base_url}/realms/{realm}/protocol/openid-connect/token"
+    
+    @property
+    def keycloak_userinfo_url(self) -> str:
+        base_url = self.keycloak_server_url.rstrip('/')
+        realm = self.keycloak_realm
+        return f"{base_url}/realms/{realm}/protocol/openid-connect/userinfo"
+    
+    @property
+    def keycloak_admin_url(self) -> str:
+        base_url = self.keycloak_server_url.rstrip('/')
+        realm = self.keycloak_realm
+        return f"{base_url}/admin/realms/{realm}"
+    
+    # FastAPI App Integration Configuration (was FastPay)
+    @property
+    def fastapi_app_base_url(self) -> str:
+        return self.get('FASTAPI_APP_BASE_URL', '')
+    
+    @property
+    # FASTPAY_API_KEY removed; no equivalent secret is required for current design
+    
+    # User Roles Configuration
+    @property
+    def keycloak_user_roles(self) -> list:
+        return self.get('KEYCLOAK_USER_ROLES', ['BUY', 'SEL'])
+    
+    # Authentication Settings
+    @property
+    def keycloak_token_cache_timeout(self) -> int:
+        """Cache timeout for Keycloak tokens in seconds"""
+        return self.get('KEYCLOAK_TOKEN_CACHE_TIMEOUT', 3600)
+    
+    @property
+    def keycloak_request_timeout(self) -> int:
+        """Timeout for Keycloak API requests in seconds"""
+        return self.get('KEYCLOAK_REQUEST_TIMEOUT', 30)
+    
+    # Document Orders API Configuration
+    @property
+    def document_orders_api_base_url(self) -> str:
+        return self.get('DOCUMENT_ORDERS_API_BASE_URL', '')
+    
+    # Kafka Configuration for AWS MSK
+    @property
+    def kafka_bootstrap_servers(self) -> list:
+        return self.get('KAFKA_BOOTSTRAP_SERVERS', ['localhost:9092'])
+    
+    @property
+    def kafka_security_protocol(self) -> str:
+        return self.get('KAFKA_SECURITY_PROTOCOL', '')
+    
+    @property
+    def kafka_sasl_mechanism(self) -> str:
+        return self.get('KAFKA_SASL_MECHANISM', '')
+    
+    @property
+    def kafka_sasl_username(self) -> str:
+        return self.get('KAFKA_SASL_USERNAME', '')
+    
+    @property
+    def kafka_sasl_password(self) -> str:
+        return self.get('KAFKA_SASL_PASSWORD', '')
+
+# Global configuration instance
+config = Config()

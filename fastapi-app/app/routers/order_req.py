@@ -9,9 +9,15 @@ from app.models.schemas import OrderReqCreate, OrderReqResponse, OrderReqUpdate,
 from app.services.order_req_service import OrderReqService
 from app.core.exceptions import NotFoundError, ConflictError, ValidationError, DatabaseError
 from app.core.logging import get_logger
+from pydantic import BaseModel
+from fastapi import Body
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/order-req", tags=["OrderReq"])
+
+
+class RolePayload(BaseModel):
+    role: str
 
 
 @router.post("/", response_model=OrderReqResponse, status_code=201)
@@ -113,6 +119,30 @@ async def append_order_req_note(order_req_id: str, note: OrderReqNote):
     except Exception as e:
         logger.error(f"Unexpected error appending note to {order_req_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/{order_req_id}/interested_roles", status_code=201)
+async def add_interested_role(order_req_id: str, payload: RolePayload = Body(...)):
+    """Add a role string to Interested_Roles array for an OrderReq."""
+    try:
+        await OrderReqService.add_interested_role(order_req_id, payload.role)
+        return JSONResponse(status_code=201, content={"message": "role added"})
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/{order_req_id}/interested_roles", status_code=200)
+async def remove_interested_role(order_req_id: str, payload: RolePayload = Body(...)):
+    """Remove a role string from Interested_Roles array for an OrderReq."""
+    try:
+        await OrderReqService.remove_interested_role(order_req_id, payload.role)
+        return JSONResponse(status_code=200, content={"message": "role removed"})
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except DatabaseError as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/note/{followup_id}", response_model=OrderReqResponse)

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Keycloak Authentication Server (external RDS for DB)
+  # Fronted by Cloudflare proxy; Keycloak will serve HTTPS directly inside the container
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4.1
+    container_name: keycloak-server
+    # Run as keycloak user (UID 1000) to match file ownership
+    user: "1000:1000"
+    # Use the regular start (not start-dev) for production mode
+    command:
+      - start
+      - --import-realm
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://${RDS_HOST:-pgdivrds.c4vmaa4sybc4.us-east-1.rds.amazonaws.com}:${RDS_PORT:-5432}/${RDS_DB:-keycloak}
+      - KC_DB_USERNAME=${RDS_USER:-postgres}
+      - KC_DB_PASSWORD=${RDS_PASSWORD:-4ru_1QptQ3eRhz4RtbyEoooWc>Yz}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-keycloakadmin}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD:-keycloakadmin}
+
+      # Hostname configuration for reverse proxy
+      - KC_HOSTNAME=keycloak.drapps.dev
+      - KC_HOSTNAME_STRICT=true
+      - KC_HOSTNAME_STRICT_HTTPS=true
+      # Point Keycloak to the mounted certificate files inside the container
+      - KC_HTTPS_CERTIFICATE_FILE=/home/ubuntu/certs/keycloak.crt
+      - KC_HTTPS_CERTIFICATE_KEY_FILE=/home/ubuntu/certs/keycloak.key
+      # Disable plain HTTP when serving TLS (we terminate TLS at the reverse proxy)
+      - KC_HTTP_ENABLED=false
+
+      # Proxy settings - running behind Nginx/ALB
+      - KC_PROXY=edge
+      - KC_PROXY_ADDRESS_FORWARDING=true
+
+      # Health check
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+
+    # Expose HTTPS port 8443 so Cloudflare or other proxy can connect
+    ports:
+      - "443:8443"
+
+    # No depends_on since DB is external (RDS)
+    networks:
+      - keycloak-network
+
+    # Mount host certificate directory so Keycloak can access cert/key files
+    volumes:
+      - /home/ubuntu/certs:/home/ubuntu/certs:ro
+
+    restart: unless-stopped
+
+networks:
+  keycloak-network:
+    driver: bridge

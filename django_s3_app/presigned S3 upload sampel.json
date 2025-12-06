@@ -1,0 +1,30 @@
+{
+    "presigned_url": "https://divs3b1.s3.amazonaws.com/",
+    "document_id": null,
+    "s3_key": "SB1029435/invoice_20251110_104646_d63365ba.pdf",
+    "file_name": "invoice.pdf",
+    "content_type": "application/pdf",
+    "file_size": 2048576,
+    "checksum": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
+    "user_email": "sb.user1@drworkplace.microsoft.com",
+    "label": "Q4 Invoice",
+    "notes": "Uploaded by finance team for audit purposes",
+    "order_req_id": "SB1029435",
+    "upload_fields": {
+        "Content-Type": "application/pdf",
+        "ServerSideEncryption": "AES256",
+        "x-amz-meta-user_email": "sb.user1@drworkplace.microsoft.com",
+        "x-amz-meta-order_req_id": "SB1029435",
+        "x-amz-meta-label": "Q4 Invoice",
+        "x-amz-meta-notes": "Uploaded by finance team for audit purposes",
+        "key": "SB1029435/invoice_20251110_104646_d63365ba.pdf",
+        "x-amz-algorithm": "AWS4-HMAC-SHA256",
+        "x-amz-credential": "ASIAQSFENCWZI3BFF3IJ/20251110/us-east-1/s3/aws4_request",
+        "x-amz-date": "20251110T104646Z",
+        "x-amz-security-token": "FwoGZXIvYXdzEEwaDFOkGv4Ep08mXUOjbyK2AT0bNCItwYNJKBbuUxL2rciKl7+oIX3ZyVJ5iw97AreKES1x5VkCtbWdNLSbT4yaJ4JcRvu7hg2/IwcmgK9kNRo8QbUDqkyodYeVafLs+GM5F7X45xNxKAoR90S0gxaxLc33OZ7AMAg3tLp1aBgOt9AhpOe2Ol7RzPLZBeqqdpz3YUl2ZSz7AXdifGLf1M+w0tSCU6LS5u2sEbRBICXowV82EYOT9Sptskeyfs52M9Rz0zWTvHZEKICAx8gGMi0bL0i5X04woM6gVpe7xvS2+F3ZBq0U2KHQFrPmcSYLru+JRsp9abVTirBsKxc=",
+        "policy": "eyJleHBpcmF0aW9uIjogIjIwMjUtMTEtMTBUMTE6NDY6NDZaIiwgImNvbmRpdGlvbnMiOiBbWyJlcSIsICIkQ29udGVudC1UeXBlIiwgImFwcGxpY2F0aW9uL3BkZiJdLCBbImNvbnRlbnQtbGVuZ3RoLXJhbmdlIiwgMCwgNDA5NzE1Ml0sIFsiZXEiLCAiJFNlcnZlclNpZGVFbmNyeXB0aW9uIiwgIkFFUzI1NiJdLCBbImVxIiwgIiR4LWFtei1tZXRhLXVzZXJfZW1haWwiLCAic2IudXNlcjFAZHJ3b3JrcGxhY2UubWljcm9zb2Z0LmNvbSJdLCBbImVxIiwgIiR4LWFtei1tZXRhLW9yZGVyX3JlcV9pZCIsICJTQjEwMjk0MzUiXSwgWyJlcSIsICIkeC1hbXotbWV0YS1sYWJlbCIsICJRNCBJbnZvaWNlIl0sIFsiZXEiLCAiJHgtYW16LW1ldGEtbm90ZXMiLCAiVXBsb2FkZWQgYnkgZmluYW5jZSB0ZWFtIGZvciBhdWRpdCBwdXJwb3NlcyJdLCB7ImJ1Y2tldCI6ICJkaXZzM2IxIn0sIHsia2V5IjogIlNCMTAyOTQzNS9pbnZvaWNlXzIwMjUxMTEwXzEwNDY0Nl9kNjMzNjViYS5wZGYifSwgeyJ4LWFtei1hbGdvcml0aG0iOiAiQVdTNC1ITUFDLVNIQTI1NiJ9LCB7IngtYW16LWNyZWRlbnRpYWwiOiAiQVNJQVFTRkVOQ1daSTNCRkYzSUovMjAyNTExMTAvdXMtZWFzdC0xL3MzL2F3czRfcmVxdWVzdCJ9LCB7IngtYW16LWRhdGUiOiAiMjAyNTExMTBUMTA0NjQ2WiJ9LCB7IngtYW16LXNlY3VyaXR5LXRva2VuIjogIkZ3b0daWEl2WVhkekVFd2FERk9rR3Y0RXAwOG1YVU9qYnlLMkFUMGJOQ0l0d1lOSktCYnVVeEwycmNpS2w3K29JWDNaeVZKNWl3OTdBcmVLRVMxeDVWa0N0YldkTkxTYlQ0eWFKNEpjUnZ1N2hnMi9Jd2NtZ0s5a05SbzhRYlVEcWt5b2RZZVZhZkxzK0dNNUY3WDQ1eE54S0FvUjkwUzBneGF4TGMzM09aN0FNQWczdExwMWFCZ090OUFocE9lMk9sN1J6UExaQmVxcWRwejNZVWwyWlN6N0FYZGlmR0xmMU0rdzB0U0NVNkxTNXUyc0ViUkJJQ1hvd1Y4MkVZT1Q5U3B0c2tleWZzNTJNOVJ6MHpXVHZIWkVLSUNBeDhnR01pMGJMMGk1WDA0d29NNmdWcGU3eHZTMitGM1pCcTBVMktIUUZyUG1jU1lMcnUrSlJzcDlhYlZUaXJCc0t4Yz0ifV19",
+        "x-amz-signature": "624d0caf2a39d17124d6d88af02cc50e457afa7d6469a3e92178f3e936d71dbf"
+    },
+    "upload_expiry": "2025-11-10T11:46:46.946272+00:00",
+    "created_at": "2025-11-10T10:46:49.027544+00:00"
+}

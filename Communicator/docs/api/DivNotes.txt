@@ -1,0 +1,12 @@
+Scripts proto compile
+
+Need to setup the python path 
+$env:PYTHONPATH="c:\Users\User\Documents\Myliving\dCent\Communicator"
+
+since I added this to activate, no manual call
+
+ for setting up environment : python -m venv venv
+
+pip install -r requirements.txt
+venv\Scripts\activate.bat
+python main.py

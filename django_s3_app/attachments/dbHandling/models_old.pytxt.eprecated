@@ -1,0 +1,30 @@
+"""
+Database models for order request handling
+"""
+
+from django.db import models
+from django.utils import timezone
+import logging
+
+logger = logging.getLogger(__name__)
+
+class OrderRequest(models.Model):
+    """
+    Database model for order requests - handles document order operations
+    """
+    # Primary identifier
+    order_req_id = models.CharField(max_length=255, unique=True, db_index=True)
+    user_id = models.CharField(max_length=255, db_index=True)
+    status = models.CharField(max_length=50, default='pending')
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        db_table = 'order_requests'
+    
+    def __str__(self):
+        return f"Order Request {self.order_req_id}"

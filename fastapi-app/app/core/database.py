@@ -56,7 +56,7 @@ class Database:
             
             # Test the connection
             await self.client.admin.command('ping')
-            print(f"✅ Connected to MongoDB at {self.config.database_url}")
+            print(f"✅ Connected to MongoDB at {self.config.database_url[:12]}...")
             
             # Get database
             self.database = self.client[self.config.database_name]

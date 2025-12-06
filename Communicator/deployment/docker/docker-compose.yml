@@ -1,0 +1,70 @@
+# Docker Compose for local development
+
+version: '3.8'
+
+services:
+  # Kafka service
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    
+  # Zookeeper service
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+  
+  # Processor service
+  processor:
+    build:
+      context: ../..
+      dockerfile: deployment/docker/processor.dockerfile
+    ports:
+      - "8001:8001"
+      - "50051:50051"
+    environment:
+      - API_BASE_URL=http://host.docker.internal:8080
+      - API_GOOGLE_BOT_URL=http://host.docker.internal:8081
+      - API_GOOGLE_CHAT_URL=http://host.docker.internal:8082
+      - KAFKA_BOOTSTRAP_SERVERS=["kafka:9092"]
+      - DEBUG_MODE=true
+    depends_on:
+      - kafka
+    volumes:
+      - ../../processor/logs:/app/logs
+  
+  # Requestor service
+  requestor:
+    build:
+      context: ../..
+      dockerfile: deployment/docker/requestor.dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - API_BASE_URL=http://host.docker.internal:8080
+      - API_GOOGLE_BOT_URL=http://host.docker.internal:8081
+      - API_GOOGLE_CHAT_URL=http://host.docker.internal:8082
+      - PROCESSOR_GRPC_HOST=processor
+      - PROCESSOR_GRPC_PORT=50051
+      - KAFKA_BOOTSTRAP_SERVERS=["kafka:9092"]
+      - DEBUG_MODE=true
+    depends_on:
+      - processor
+      - kafka
+    volumes:
+      - ../../requestor/logs:/app/logs
+
+networks:
+  default:
+    name: dcent-network

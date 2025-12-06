@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  googlechat-keycloak:
+    build: .
+    container_name: googlechat-keycloak
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/wif-config.json
+    volumes:
+      # Mount configuration files
+      - ./wif-config.json:/app/wif-config.json:ro
+      - ./src/googlechat_keycloak/config.py:/app/src/googlechat_keycloak/config.py:ro
+    networks:
+      - googlechat-network
+    depends_on:
+      - keycloak
+    restart: unless-stopped
+    command: ["python", "-m", "googlechat_keycloak.cli", "demo"]
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak-server
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_HTTP_PORT=9090
+    ports:
+      - "9090:9090"
+    networks:
+      - googlechat-network
+    command: ["start-dev", "--http-port=9090"]
+    restart: unless-stopped
+
+networks:
+  googlechat-network:
+    driver: bridge
+
+volumes:
+  keycloak-data:
