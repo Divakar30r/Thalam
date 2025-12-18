@@ -7,15 +7,15 @@ KEYCLOAK_CONFIG = {
     "server_url": "http://localhost:9090",  # Update with your actual Keycloak server URL
     "realm": "OrderMgmt",  # Update with your actual realm name
     "client_id": "Googlechat-api-client",
-    "client_secret": "Mrf9htbXFOtfVGj8qdANSmEHEPYEdPMv",  # Replace with actual secret
+    "client_secret": "wqq",  # Replace with actual secret
     "token_endpoint": "http://localhost:9090/realms/OrderMgmt/protocol/openid-connect/token"
 }
 
 # Google Cloud Project Configuration
 GOOGLE_CLOUD_CONFIG = {
-    "project_number": "327935197605",  # Replace with your GCP project number
+    "project_number": "2112",  # Replace with your GCP project number
     "project_id": "OrderManagement",  # Replace with your GCP project ID
-    "service_account_email": "gordersrv@stunning-crane-475702-v6.iam.gserviceaccount.com",  # Update with actual SA email
+    "service_account_email": "21unning-crane-22-v6.iam.gserviceaccount.com",  # Update with actual SA email
     "workload_identity_pool_id": "keycloak-pool",
     "workload_identity_provider_id": "keycloak",
     "location": "global"
